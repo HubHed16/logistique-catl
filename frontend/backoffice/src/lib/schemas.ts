@@ -1,35 +1,21 @@
 import { z } from "zod";
 import type { StorageZoneType } from "./types";
 
-const ZONE_TYPES = [
-  "ambient",
-  "fresh",
-  "cold",
-  "freezer",
-  "dry",
-  "preparation",
-] as const;
+const ZONE_TYPES = ["ambient", "fresh", "negative"] as const;
 
 /**
- * Valeurs par défaut de température (°C) par type de zone, alignées sur les
- * recommandations AFSCA / guide sectoriel circuit court (ordre de grandeur) :
- *   - ambient     : ambiant non spécifié
- *   - fresh       : réfrigéré 0–7 °C (fruits/légumes coupés, laitiers)
- *   - cold        : froid strict 0–4 °C (viande, poissonnerie)
- *   - freezer     : congelé ≤ -18 °C
- *   - dry         : sec / stable (céréales, conserves)
- *   - preparation : zone tampon de préparation, refroidie modérément
+ * Valeurs par défaut de T° (°C) par type de zone :
+ *   - ambient  : ambiant / sec (10–25)
+ *   - fresh    : réfrigéré 0–7
+ *   - negative : congelé ≤ -18
  */
 export const DEFAULTS_BY_TYPE: Record<
   StorageZoneType,
   { targetTemp: number; tempMin: number; tempMax: number }
 > = {
-  ambient: { targetTemp: 15, tempMin: 10, tempMax: 25 },
+  ambient: { targetTemp: 18, tempMin: 10, tempMax: 25 },
   fresh: { targetTemp: 4, tempMin: 0, tempMax: 7 },
-  cold: { targetTemp: 2, tempMin: 0, tempMax: 4 },
-  freezer: { targetTemp: -20, tempMin: -25, tempMax: -18 },
-  dry: { targetTemp: 18, tempMin: 10, tempMax: 25 },
-  preparation: { targetTemp: 12, tempMin: 8, tempMax: 18 },
+  negative: { targetTemp: -20, tempMin: -25, tempMax: -18 },
 };
 
 export const zoneFormSchema = z
@@ -52,10 +38,6 @@ export const zoneFormSchema = z
       .number({ message: "Max requis" })
       .min(-40, "Trop bas")
       .max(60, "Trop haut"),
-    areaM2: z.coerce
-      .number({ message: "Surface requise" })
-      .positive("La surface doit être positive")
-      .max(100000, "Valeur invraisemblable"),
   })
   .refine((d) => d.tempMin < d.tempMax, {
     message: "Min doit être strictement inférieur au Max",
@@ -121,31 +103,30 @@ export type ProductCreateInput = z.input<typeof productCreateSchema>;
 export type ProductCreateValues = z.output<typeof productCreateSchema>;
 
 // ─── Réception (wizard préparateur) ────────────────────────────────────────
+// NB: la table stock_item exige location_id NOT NULL + lot_number NOT NULL
+// côté SQL — donc plus de xDock, et le lot est obligatoire. Un contrôle KO
+// ne crée pas de stock_item (destruction actée uniquement côté journal).
 
 export const receptionSchema = z
   .object({
-    // Étape 1 — identification
     productId: z.string().min(1, "Produit requis"),
     ean: z.string().trim().optional(),
     lotNumber: z
       .string()
       .trim()
-      .max(60)
-      .optional()
-      .transform((v) => (v ? v : undefined)),
-
-    // Étape 2 — quantité & poids & T°
+      .min(1, "N° de lot requis")
+      .max(100, "100 caractères max"),
     quantity: z.coerce
       .number({ message: "Quantité requise" })
       .positive("Quantité strictement positive"),
     unit: z.enum(STOCK_UNITS),
-    weightDecl: z
+    weightDeclared: z
       .union([
         z.coerce.number().nonnegative(),
         z.literal("").transform(() => undefined),
       ])
       .optional(),
-    weightAct: z
+    weightActual: z
       .union([
         z.coerce.number().nonnegative(),
         z.literal("").transform(() => undefined),
@@ -157,8 +138,6 @@ export const receptionSchema = z
         z.literal("").transform(() => undefined),
       ])
       .optional(),
-
-    // Étape 3 — dates
     expirationDate: z
       .string()
       .optional()
@@ -167,8 +146,6 @@ export const receptionSchema = z
       .string()
       .optional()
       .transform((v) => (v ? v : undefined)),
-
-    // Étape 4 — qualité
     qualityOk: z.boolean(),
     statusReason: z
       .string()
@@ -176,9 +153,6 @@ export const receptionSchema = z
       .max(300)
       .optional()
       .transform((v) => (v ? v : undefined)),
-
-    // Étape 5 — routing
-    routing: z.enum(["stock", "xdock"]),
     locationId: z.string().optional(),
   })
   .superRefine((data, ctx) => {
@@ -196,11 +170,11 @@ export const receptionSchema = z
         message: "Motif requis si le contrôle est KO",
       });
     }
-    if (data.qualityOk && data.routing === "stock" && !data.locationId) {
+    if (data.qualityOk && !data.locationId) {
       ctx.addIssue({
         code: "custom",
         path: ["locationId"],
-        message: "Emplacement requis pour un routage en stock",
+        message: "Emplacement requis (contrôle OK)",
       });
     }
   });

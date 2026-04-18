@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  Package,
   XCircle,
 } from "lucide-react";
 import { useState } from "react";
@@ -29,22 +28,18 @@ import {
   type ReceptionFormInput,
   type ReceptionFormValues,
 } from "@/lib/schemas";
-import type {
-  Product,
-  ReceptionResponse,
-  StockItemUnit,
-} from "@/lib/types";
+import type { Product, ReceptionResponse } from "@/lib/types";
 
 const STEPS = [
   { label: "Identification", description: "Produit" },
   { label: "Quantité", description: "Poids & T°" },
-  { label: "Dates", description: "DLC / DDM" },
+  { label: "Dates", description: "DLC / DDM / Lot" },
   { label: "Qualité", description: "Contrôle" },
-  { label: "Routage", description: "Stock / xDock" },
+  { label: "Emplacement", description: "Placement stock" },
   { label: "Récap", description: "Validation" },
 ];
 
-const UNIT_LABEL: Record<StockItemUnit, string> = {
+const UNIT_LABEL: Record<string, string> = {
   kg: "kg",
   piece: "pièce",
   liter: "L",
@@ -52,6 +47,11 @@ const UNIT_LABEL: Record<StockItemUnit, string> = {
   dozen: "douzaine",
   box: "caisse",
 };
+
+function unitLabel(u: string | null | undefined): string {
+  if (!u) return "";
+  return UNIT_LABEL[u] ?? u;
+}
 
 type StepIndex = 0 | 1 | 2 | 3 | 4 | 5;
 
@@ -73,14 +73,13 @@ export function ReceptionWizard() {
       lotNumber: "",
       quantity: undefined as unknown as number,
       unit: "kg",
-      weightDecl: undefined,
-      weightAct: undefined,
+      weightDeclared: undefined,
+      weightActual: undefined,
       receptionTemp: undefined,
       expirationDate: "",
       bestBefore: "",
       qualityOk: true,
       statusReason: "",
-      routing: "stock",
       locationId: "",
     },
   });
@@ -100,19 +99,25 @@ export function ReceptionWizard() {
 
   const receptionMutation = useReception();
 
-  // Appliquer le produit identifié au form
   function applyProduct(product: Product) {
     setIdentifiedProduct(product);
     setValue("productId", product.id, { shouldValidate: true });
     setValue("ean", product.ean ?? "", { shouldValidate: false });
-    setValue("unit", product.unit, { shouldValidate: false });
+    // la colonne unit est VARCHAR côté SQL — on restreint à nos unités connues
+    if (["kg", "piece", "liter", "bunch", "dozen", "box"].includes(product.unit)) {
+      setValue(
+        "unit",
+        product.unit as ReceptionFormInput["unit"],
+        { shouldValidate: false },
+      );
+    }
     setIsCreatingProduct(false);
   }
 
   async function goNext() {
     const ok = await validateStep(step);
     if (!ok) return;
-    // Si KO en étape 4 → on saute l'étape routage et on va direct au récap
+    // Si KO en étape qualité (3), on saute l'étape emplacement et on va au récap
     if (step === 3 && !getValues("qualityOk")) {
       setStep(5);
       return;
@@ -140,12 +145,10 @@ export function ReceptionWizard() {
         return trigger(["quantity", "unit", "receptionTemp"]);
       case 2:
         return trigger(["expirationDate", "bestBefore", "lotNumber"]);
-      case 3: {
-        const ok = await trigger(["qualityOk", "statusReason"]);
-        return ok;
-      }
+      case 3:
+        return trigger(["qualityOk", "statusReason"]);
       case 4:
-        return trigger(["routing", "locationId"]);
+        return trigger(["locationId"]);
       case 5:
         return true;
     }
@@ -156,8 +159,8 @@ export function ReceptionWizard() {
       const res = await receptionMutation.mutateAsync(values);
       setResult(res);
       toast.success(
-        res.status === "destroyed"
-          ? "Destruction enregistrée."
+        res.status === "blocked"
+          ? "Lot rejeté, non stocké."
           : "Réception enregistrée.",
       );
     } catch (err) {
@@ -229,25 +232,25 @@ export function ReceptionWizard() {
               <Field
                 label="Poids déclaré (kg)"
                 hint="Optionnel — bordereau fournisseur"
-                error={errors.weightDecl?.message}
+                error={errors.weightDeclared?.message}
               >
                 <Input
                   type="number"
                   step="0.01"
-                  invalid={!!errors.weightDecl}
-                  {...register("weightDecl")}
+                  invalid={!!errors.weightDeclared}
+                  {...register("weightDeclared")}
                 />
               </Field>
               <Field
                 label="Poids pesé (kg)"
                 hint="Optionnel — balance à la réception"
-                error={errors.weightAct?.message}
+                error={errors.weightActual?.message}
               >
                 <Input
                   type="number"
                   step="0.01"
-                  invalid={!!errors.weightAct}
-                  {...register("weightAct")}
+                  invalid={!!errors.weightActual}
+                  {...register("weightActual")}
                 />
               </Field>
               <Field
@@ -298,7 +301,8 @@ export function ReceptionWizard() {
               </Field>
               <Field
                 label="N° de lot fournisseur"
-                hint="Facultatif si aucun lot imprimé."
+                required
+                hint="Obligatoire côté SQL (stock_item.lot_number NOT NULL)."
                 error={errors.lotNumber?.message}
               >
                 <Input
@@ -315,7 +319,7 @@ export function ReceptionWizard() {
         {step === 3 && <QualityStep form={form} />}
 
         {step === 4 && (
-          <RoutingStep form={form} storageType={identifiedProduct?.storageType} />
+          <PlacementStep form={form} product={identifiedProduct} />
         )}
 
         {step === 5 && (
@@ -337,10 +341,7 @@ export function ReceptionWizard() {
             Précédent
           </Button>
           {step < 5 ? (
-            <Button
-              type="button"
-              onClick={goNext}
-            >
+            <Button type="button" onClick={goNext}>
               Suivant
               <ChevronRight className="w-4 h-4" />
             </Button>
@@ -353,7 +354,7 @@ export function ReceptionWizard() {
             >
               {qualityOk
                 ? "Valider la réception"
-                : "Enregistrer la destruction"}
+                : "Enregistrer le rejet"}
             </Button>
           )}
         </div>
@@ -486,17 +487,17 @@ function ProductDetails({ product }: { product: Product }) {
     <dl className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
       <div>
         <dt className="uppercase font-semibold text-catl-text">Catégorie</dt>
-        <dd className="text-catl-primary">{product.category}</dd>
+        <dd className="text-catl-primary">{product.category ?? "—"}</dd>
       </div>
       <div>
         <dt className="uppercase font-semibold text-catl-text">Conservation</dt>
         <dd className="text-catl-primary">
-          {zoneTypeLabel(product.storageType)}
+          {product.storageType ? zoneTypeLabel(product.storageType) : "—"}
         </dd>
       </div>
       <div>
         <dt className="uppercase font-semibold text-catl-text">Unité</dt>
-        <dd className="text-catl-primary">{UNIT_LABEL[product.unit]}</dd>
+        <dd className="text-catl-primary">{unitLabel(product.unit)}</dd>
       </div>
       <div>
         <dt className="uppercase font-semibold text-catl-text">Bio</dt>
@@ -551,7 +552,7 @@ function QualityStep({
           <XCircle className="w-7 h-7 text-catl-danger mb-2" />
           <div className="font-bold text-catl-primary">Contrôle KO</div>
           <div className="text-xs text-catl-text">
-            Produit à détruire (pourriture, rupture d&apos;emballage…).
+            Lot rejeté — pas de stock_item créé.
           </div>
         </button>
       </div>
@@ -575,124 +576,85 @@ function QualityStep({
   );
 }
 
-// ─── Étape 5 : Routage ─────────────────────────────────────────────────────
+// ─── Étape 5 : Emplacement ────────────────────────────────────────────────
 
-function RoutingStep({
+function PlacementStep({
   form,
-  storageType,
+  product,
 }: {
   form: ReturnType<
     typeof useForm<ReceptionFormInput, unknown, ReceptionFormValues>
   >;
-  storageType: Product["storageType"] | undefined;
+  product: Product | null;
 }) {
   const { control, register, setValue, formState } = form;
-  const routing = useWatch({ control, name: "routing" });
   const locationId = useWatch({ control, name: "locationId" });
 
   const locationsQuery = useAvailableLocations(
-    routing === "stock" ? storageType : undefined,
+    product?.storageType ?? undefined,
   );
 
   return (
     <Card>
-      <CardTitle>Routage du produit</CardTitle>
+      <CardTitle>Emplacement de stockage</CardTitle>
+      <p className="text-sm text-catl-text mb-4">
+        Choisis une location disponible en zone{" "}
+        <strong>
+          {product?.storageType ? zoneTypeLabel(product.storageType) : "—"}
+        </strong>
+        .
+      </p>
 
-      <div className="grid grid-cols-2 gap-3 mb-5">
-        <button
-          type="button"
-          onClick={() => setValue("routing", "stock", { shouldValidate: true })}
-          className={`p-4 rounded-md border-2 text-left transition-all ${
-            routing === "stock"
-              ? "border-catl-accent bg-orange-50"
-              : "border-gray-200 hover:border-catl-accent/50"
-          }`}
-        >
-          <Package className="w-6 h-6 text-catl-accent mb-2" />
-          <div className="font-bold text-catl-primary">Stock</div>
-          <div className="text-xs text-catl-text">
-            Stocker sur un emplacement physique.
-          </div>
-        </button>
-        <button
-          type="button"
-          onClick={() => setValue("routing", "xdock", { shouldValidate: true })}
-          className={`p-4 rounded-md border-2 text-left transition-all ${
-            routing === "xdock"
-              ? "border-purple-500 bg-purple-50"
-              : "border-gray-200 hover:border-purple-400"
-          }`}
-        >
-          <div className="text-2xl mb-2">⚡</div>
-          <div className="font-bold text-catl-primary">xDock</div>
-          <div className="text-xs text-catl-text">
-            Transit direct vers la sortie, sans stockage.
-          </div>
-        </button>
-      </div>
+      <input type="hidden" {...register("locationId")} />
 
-      <input type="hidden" {...register("routing")} />
-
-      {routing === "stock" && (
-        <div className="space-y-3">
-          <SectionTitle>Emplacement suggéré</SectionTitle>
-          {locationsQuery.isLoading && (
-            <p className="text-sm text-catl-text">
-              Recherche d&apos;un emplacement...
-            </p>
-          )}
-          {!locationsQuery.isLoading && locationsQuery.data?.length === 0 && (
-            <p className="text-sm text-catl-danger">
-              Aucun emplacement disponible pour ce type de conservation. Crée
-              une zone/location adaptée avant de valider.
-            </p>
-          )}
-          {(locationsQuery.data ?? []).length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {(locationsQuery.data ?? []).map((loc) => {
-                const selected = locationId === loc.id;
-                return (
-                  <button
-                    key={loc.id}
-                    type="button"
-                    onClick={() =>
-                      setValue("locationId", loc.id, {
-                        shouldValidate: true,
-                      })
-                    }
-                    className={`p-3 rounded-md border text-left transition-all ${
-                      selected
-                        ? "border-catl-accent bg-orange-50 ring-2 ring-catl-accent/30"
-                        : "border-gray-200 hover:border-catl-accent/40"
-                    }`}
-                  >
-                    <div className="font-semibold text-catl-primary text-sm">
-                      {loc.label}
-                    </div>
-                    <div className="text-xs text-catl-text font-mono">
-                      Rack {loc.rack} · Position {loc.position}
-                      {loc.temperature !== null && (
-                        <> · {loc.temperature.toFixed(1)} °C</>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-          {formState.errors.locationId && (
-            <p className="text-xs text-catl-danger">
-              {formState.errors.locationId.message}
-            </p>
-          )}
+      <SectionTitle>Emplacements libres</SectionTitle>
+      {locationsQuery.isLoading && (
+        <p className="text-sm text-catl-text">
+          Recherche d&apos;un emplacement...
+        </p>
+      )}
+      {!locationsQuery.isLoading && locationsQuery.data?.length === 0 && (
+        <p className="text-sm text-catl-danger">
+          Aucun emplacement disponible pour ce type de conservation. Crée une
+          zone / un emplacement adapté avant de valider.
+        </p>
+      )}
+      {(locationsQuery.data ?? []).length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+          {(locationsQuery.data ?? []).map((loc) => {
+            const selected = locationId === loc.id;
+            return (
+              <button
+                key={loc.id}
+                type="button"
+                onClick={() =>
+                  setValue("locationId", loc.id, { shouldValidate: true })
+                }
+                className={`p-3 rounded-md border text-left transition-all ${
+                  selected
+                    ? "border-catl-accent bg-orange-50 ring-2 ring-catl-accent/30"
+                    : "border-gray-200 hover:border-catl-accent/40"
+                }`}
+              >
+                <div className="font-semibold text-catl-primary text-sm">
+                  {loc.label}
+                </div>
+                <div className="text-xs text-catl-text font-mono">
+                  {loc.rack && <>Rack {loc.rack}</>}
+                  {loc.position && <> · Position {loc.position}</>}
+                  {loc.temperature !== null && (
+                    <> · {loc.temperature.toFixed(1)} °C</>
+                  )}
+                </div>
+              </button>
+            );
+          })}
         </div>
       )}
-
-      {routing === "xdock" && (
-        <div className="p-3 bg-purple-50 border-l-4 border-purple-500 rounded-md text-sm text-catl-text">
-          Le produit sera marqué en <strong>xDock</strong> et géré plus tard
-          dans le module sortie (hors scope Phase 1).
-        </div>
+      {formState.errors.locationId && (
+        <p className="text-xs text-catl-danger mt-2">
+          {formState.errors.locationId.message}
+        </p>
       )}
     </Card>
   );
@@ -717,7 +679,7 @@ function RecapStep({
   return (
     <Card>
       <CardTitle>
-        {ko ? "Confirmer la destruction" : "Récapitulatif de la réception"}
+        {ko ? "Confirmer le rejet" : "Récapitulatif de la réception"}
       </CardTitle>
 
       {submitting && (
@@ -727,7 +689,7 @@ function RecapStep({
       <dl className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
         <Recap label="Produit">
           {identifiedProduct?.name ?? "—"}
-          {identifiedProduct && (
+          {identifiedProduct?.storageType && (
             <span className="text-xs text-catl-text ml-2">
               ({zoneTypeLabel(identifiedProduct.storageType)})
             </span>
@@ -737,14 +699,14 @@ function RecapStep({
           {v.quantity ? (
             <>
               <span className="font-mono">{String(v.quantity)}</span>{" "}
-              {UNIT_LABEL[v.unit ?? "kg"]}
+              {unitLabel(v.unit)}
             </>
           ) : (
             "—"
           )}
         </Recap>
         <Recap label="Poids (déclaré / pesé)">
-          {(v.weightDecl ?? "—") + " / " + (v.weightAct ?? "—")} kg
+          {(v.weightDeclared ?? "—") + " / " + (v.weightActual ?? "—")} kg
         </Recap>
         <Recap label="T° à la réception">
           {v.receptionTemp !== undefined && v.receptionTemp !== ""
@@ -762,11 +724,6 @@ function RecapStep({
           )}
         </Recap>
         {ko && <Recap label="Motif KO">{v.statusReason || "—"}</Recap>}
-        {!ko && (
-          <Recap label="Routage">
-            {v.routing === "stock" ? "Stock" : "xDock"}
-          </Recap>
-        )}
       </dl>
     </Card>
   );
@@ -798,21 +755,17 @@ function SuccessScreen({
   result: ReceptionResponse;
   onNew: () => void;
 }) {
-  const isDestroyed = result.status === "destroyed";
+  const isBlocked = result.status === "blocked";
   return (
     <Card validated>
       <div className="text-center py-6">
-        {isDestroyed ? (
+        {isBlocked ? (
           <XCircle className="w-16 h-16 text-catl-danger mx-auto mb-3" />
         ) : (
           <CheckCircle2 className="w-16 h-16 text-catl-success mx-auto mb-3" />
         )}
         <h2 className="text-2xl font-bold text-catl-primary mb-1">
-          {isDestroyed
-            ? "Destruction enregistrée"
-            : result.status === "xdock"
-              ? "Produit placé en xDock"
-              : "Produit mis en stock"}
+          {isBlocked ? "Lot rejeté" : "Produit mis en stock"}
         </h2>
         <p className="text-catl-text mb-5">
           N° STOCK_ITEM :{" "}
@@ -836,4 +789,3 @@ function SuccessScreen({
     </Card>
   );
 }
-

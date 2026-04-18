@@ -2,7 +2,7 @@ import { buildSeed, type MockData } from "./seed";
 
 // Bumper à chaque changement de forme du seed / des types stockés
 // afin d'éviter d'afficher des données localStorage obsolètes.
-const STORAGE_KEY = "catl.mock-data.v3";
+const STORAGE_KEY = "catl.mock-data.v4";
 
 let cache: MockData | null = null;
 

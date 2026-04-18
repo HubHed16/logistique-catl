@@ -25,32 +25,29 @@ function uid(): string {
 export function buildSeed(): MockData {
   const cooperativeId = uid();
 
-  const fraisA: StorageZone = {
+  const frais: StorageZone = {
     id: uid(),
     name: "Frais A",
     type: "fresh",
     targetTemp: 4,
     tempMin: 0,
     tempMax: 7,
-    areaM2: 120,
   };
-  const sec: StorageZone = {
+  const ambiant: StorageZone = {
     id: uid(),
-    name: "Sec",
-    type: "dry",
+    name: "Ambiant",
+    type: "ambient",
     targetTemp: 18,
     tempMin: 10,
     tempMax: 25,
-    areaM2: 200,
   };
   const congelation: StorageZone = {
     id: uid(),
     name: "Congélation",
-    type: "freezer",
+    type: "negative",
     targetTemp: -20,
     tempMin: -25,
     tempMax: -18,
-    areaM2: 60,
   };
 
   const locations: StorageLocation[] = [
@@ -60,7 +57,7 @@ export function buildSeed(): MockData {
       rack: "R1",
       position: "P1",
       temperature: 4.2,
-      zoneId: fraisA.id,
+      zoneId: frais.id,
     },
     {
       id: uid(),
@@ -68,15 +65,15 @@ export function buildSeed(): MockData {
       rack: "R1",
       position: "P2",
       temperature: 3.9,
-      zoneId: fraisA.id,
+      zoneId: frais.id,
     },
     {
       id: uid(),
-      label: "Sec · R1 · P1",
+      label: "Ambiant · R1 · P1",
       rack: "R1",
       position: "P1",
       temperature: null,
-      zoneId: sec.id,
+      zoneId: ambiant.id,
     },
     {
       id: uid(),
@@ -173,7 +170,7 @@ export function buildSeed(): MockData {
 
   return {
     cooperativeId,
-    zones: [fraisA, sec, congelation],
+    zones: [frais, ambiant, congelation],
     locations,
     producers: [fermeMartin, rucheBleue, boulangerie],
     products,
