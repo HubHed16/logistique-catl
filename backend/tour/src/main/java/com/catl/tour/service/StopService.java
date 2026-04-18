@@ -18,11 +18,11 @@ import java.util.UUID;
 public class StopService {
 
     private final StopRepository stopRepository;
-    private final RouteRepository routeRepository;
+    private final RouteService routeService;
 
-    StopService(StopRepository stopRepository, RouteRepository routeRepository) {
+    StopService(StopRepository stopRepository, RouteService routeService) {
         this.stopRepository = stopRepository;
-        this.routeRepository = routeRepository;
+        this.routeService = routeService;
     }
 
     @Transactional
@@ -74,13 +74,8 @@ public class StopService {
     }
 
     private void assertRouteMutable(UUID routeId) {
-        String status = routeRepository.currentStatus(routeId);
-        if (status == null) {
-            throw new NotFoundException("Route", routeId);
-        }
-        if ("validated".equals(status) || "completed".equals(status)) {
-            throw new ApiException(HttpStatus.CONFLICT, "ROUTE_LOCKED",
-                    "Route is %s and cannot be modified".formatted(status));
-        }
+        // Même règle que RouteService : draft sans contrainte, validated
+        // ouvert sauf le jour J, completed/cancelled verrouillés.
+        routeService.assertMutable(routeId);
     }
 }

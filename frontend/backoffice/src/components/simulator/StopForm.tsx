@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { AddressAutocomplete } from "@/components/simulator/AddressAutocomplete";
 import { CustomerPicker } from "@/components/simulator/CustomerPicker";
 import { Button } from "@/components/ui/Button";
-import { Field, Input, Select } from "@/components/ui/Field";
+import { Field, Input } from "@/components/ui/Field";
 import {
   ApiError,
   useCreateStop,
@@ -21,7 +21,6 @@ import {
   type StopFormValues,
 } from "@/lib/simulator/schemas";
 import {
-  STOP_OPERATION_LABELS,
   type ApiStop,
   type Customer,
   type StopCreate,
@@ -82,6 +81,8 @@ export function StopForm({
     register,
     handleSubmit,
     setValue,
+    trigger,
+    clearErrors,
     formState: { errors, isSubmitting },
   } = form;
 
@@ -89,13 +90,16 @@ export function StopForm({
     setMode(next);
     setValue("mode", next);
     if (next === "customer") {
-      setValue("address", "", { shouldValidate: true });
-      setValue("latitude", undefined, { shouldValidate: true });
-      setValue("longitude", undefined, { shouldValidate: true });
+      setValue("address", "");
+      setValue("latitude", undefined);
+      setValue("longitude", undefined);
     } else {
-      setValue("customerId", "", { shouldValidate: true });
+      setValue("customerId", "");
       setSelectedCustomer(null);
     }
+    // On efface les erreurs héritées de l'autre mode — la validation
+    // repartira sur l'interaction utilisateur suivante.
+    clearErrors(["customerId", "address", "latitude", "longitude"]);
   };
 
   const address = useWatch({ control, name: "address" });
@@ -207,14 +211,19 @@ export function StopForm({
             <AddressAutocomplete
               value={address ?? ""}
               onChangeText={(t) => {
-                setValue("address", t, { shouldValidate: true });
-                setValue("latitude", undefined, { shouldValidate: true });
-                setValue("longitude", undefined, { shouldValidate: true });
+                setValue("address", t);
+                setValue("latitude", undefined);
+                setValue("longitude", undefined);
+                void trigger(["address", "latitude", "longitude"]);
               }}
               onPick={(r) => {
-                setValue("address", r.displayName, { shouldValidate: true });
-                setValue("latitude", r.latitude, { shouldValidate: true });
-                setValue("longitude", r.longitude, { shouldValidate: true });
+                setValue("address", r.displayName);
+                setValue("latitude", r.latitude);
+                setValue("longitude", r.longitude);
+                // Le refine de `stopFormSchema` remonte son erreur sur `address`
+                // quand les coords manquent : on doit revalider l'ensemble pour
+                // effacer l'erreur une fois lat/lon posés.
+                void trigger(["address", "latitude", "longitude"]);
               }}
               invalid={!!errors.address}
               leftIcon={<MapPin className="w-4 h-4 text-catl-text/60" />}
@@ -222,18 +231,9 @@ export function StopForm({
           </Field>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
-          <Field label="Opération" required>
-            <Select {...register("operation")}>
-              {(
-                Object.keys(STOP_OPERATION_LABELS) as StopOperation[]
-              ).map((op) => (
-                <option key={op} value={op}>
-                  {STOP_OPERATION_LABELS[op]}
-                </option>
-              ))}
-            </Select>
-          </Field>
+        {/* Opération cachée : seule la livraison est gérée côté produit. */}
+        <input type="hidden" {...register("operation")} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
           <Field label="Montant (€)" error={errors.amountEur?.message}>
             <Input
               type="number"
