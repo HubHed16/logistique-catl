@@ -24,7 +24,7 @@ public interface StockItemRepository extends JpaRepository<StockItem, UUID> {
     @Query("""
         SELECT s FROM StockItem s
         WHERE s.expirationDate <= :limitDate
-        AND s.status = com.catl.wms.model.StockItem$StockStatus.available
+        AND s.status = com.catl.wms.model.StockItem$StockStatus.AVAILABLE
     """)
     List<StockItem> findExpiringBefore(@Param("limitDate") LocalDate limitDate);
 
@@ -32,7 +32,7 @@ public interface StockItemRepository extends JpaRepository<StockItem, UUID> {
     @Query("""
         SELECT s FROM StockItem s
         WHERE s.quantity <= :threshold
-        AND s.status = com.catl.wms.model.StockItem$StockStatus.available
+        AND s.status = com.catl.wms.model.StockItem$StockStatus.AVAILABLE
     """)
     List<StockItem> findLowStock(@Param("threshold") BigDecimal threshold);
 

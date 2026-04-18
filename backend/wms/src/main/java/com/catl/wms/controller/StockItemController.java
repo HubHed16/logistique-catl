@@ -1,7 +1,6 @@
 package com.catl.wms.controller;
 
-import com.catl.wms.dto.stockitem.StockItemRequest;
-import com.catl.wms.dto.stockitem.StockItemResponse;
+import com.catl.wms.dto.stockitem.StockItemDto;
 import com.catl.wms.dto.stockitem.UpdateStatusRequest;
 import com.catl.wms.model.StockItem;
 import com.catl.wms.service.StockItemService;
@@ -29,25 +28,25 @@ public class StockItemController {
 
 
     @PostMapping
-    public ResponseEntity<StockItemResponse> create(@Valid @RequestBody StockItemRequest request) {
+    public ResponseEntity<StockItemDto> create(@Valid @RequestBody StockItemDto request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(stockItemService.create(request));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<StockItemResponse> get(@PathVariable UUID id) {
+    public ResponseEntity<StockItemDto> get(@PathVariable UUID id) {
         return ResponseEntity.ok(stockItemService.getById(id));
     }
 
     @GetMapping
-    public ResponseEntity<Page<StockItemResponse>> list(
+    public ResponseEntity<Page<StockItemDto>> list(
             @PageableDefault(size = 20, sort = "receptionDate", direction = Sort.Direction.DESC) Pageable pageable) {
         return ResponseEntity.ok(stockItemService.list(pageable));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<StockItemResponse> update(
+    public ResponseEntity<StockItemDto> update(
             @PathVariable UUID id,
-            @Valid @RequestBody StockItemRequest request) {
+            @Valid @RequestBody StockItemDto request) {
         return ResponseEntity.ok(stockItemService.update(id, request));
     }
 
@@ -59,7 +58,7 @@ public class StockItemController {
 
 
     @GetMapping("/search")
-    public ResponseEntity<Page<StockItemResponse>> search(
+    public ResponseEntity<Page<StockItemDto>> search(
             @RequestParam(required = false) UUID productId,
             @RequestParam(required = false) UUID cooperativeId,
             @RequestParam(required = false) UUID locationId,
@@ -74,19 +73,19 @@ public class StockItemController {
 
 
     @GetMapping("/expiring-soon")
-    public ResponseEntity<List<StockItemResponse>> expiringSoon(
+    public ResponseEntity<List<StockItemDto>> expiringSoon(
             @RequestParam(defaultValue = "7") int daysAhead) {
         return ResponseEntity.ok(stockItemService.findExpiringSoon(daysAhead));
     }
 
     @GetMapping("/low-stock")
-    public ResponseEntity<List<StockItemResponse>> lowStock(
+    public ResponseEntity<List<StockItemDto>> lowStock(
             @RequestParam(defaultValue = "10.0") BigDecimal threshold) {
         return ResponseEntity.ok(stockItemService.findLowStock(threshold));
     }
 
     @PatchMapping("/{id}/status")
-    public ResponseEntity<StockItemResponse> updateStatus(
+    public ResponseEntity<StockItemDto> updateStatus(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateStatusRequest request) {
         return ResponseEntity.ok(stockItemService.updateStatus(id, request));

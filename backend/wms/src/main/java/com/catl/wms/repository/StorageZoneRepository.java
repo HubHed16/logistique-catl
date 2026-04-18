@@ -6,5 +6,5 @@ import java.util.List;
 import java.util.UUID;
 
 public interface StorageZoneRepository extends JpaRepository<StorageZone, UUID> {
-    List<StorageZone> findByType(List<StorageZone.ZoneType> types);
+    List<StorageZone> findByTypeIn(List<StorageZone.ZoneType> types);
 }

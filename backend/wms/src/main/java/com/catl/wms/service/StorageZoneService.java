@@ -29,7 +29,7 @@ public class StorageZoneService {
     }
 
     public List<StorageZoneDto> getStorageZoneByType(List<StorageZone.ZoneType> types) {
-        return storageZoneRepository.findByType(types).stream().map(storageZoneMapper::getDto).toList();
+        return storageZoneRepository.findByTypeIn(types).stream().map(storageZoneMapper::getDto).toList();
     }
 
     public StorageZoneDto saveOrUpdateStorageZone(UUID storageZoneId, StorageZoneDto storageZoneDto) {

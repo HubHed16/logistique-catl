@@ -33,7 +33,7 @@ public class StorageLocationService {
     }
 
     public List<StorageLocationDto> getStorageLocationsByZoneId(UUID zoneId) {
-        return storageLocationRepository.findByStorageLocationZoneId(zoneId).stream()
+        return storageLocationRepository.findByZoneId(zoneId).stream()
                 .map(storageLocationMapper::getDto)
                 .toList();
     }

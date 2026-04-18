@@ -1,10 +1,10 @@
 package com.catl.wms.service;
 
-import com.catl.wms.dto.stockitem.StockItemRequest;
-import com.catl.wms.dto.stockitem.StockItemResponse;
+import com.catl.wms.dto.stockitem.StockItemDto;
 import com.catl.wms.dto.stockitem.UpdateStatusRequest;
 import com.catl.wms.model.*;
 import com.catl.wms.repository.*;
+import com.catl.wms.service.mapper.StockItemMapper;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -24,59 +24,60 @@ public class StockItemService {
     private final ProductRepository productRepository;
     private final StorageLocationRepository storageLocationRepository;
     private final CooperativeRepository cooperativeRepository;
+    private final StockItemMapper stockItemMapper;
 
 
     @Transactional
-    public StockItemResponse create(StockItemRequest request) {
-        Product product = productRepository.findById(request.getProductId())
+    public StockItemDto create(StockItemDto request) {
+        Product product = productRepository.findById(request.productId())
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "Product not found: " + request.getProductId()));
+                        "Product not found: " + request.productId()));
 
-        StorageLocation location = storageLocationRepository.findById(request.getLocationId())
+        StorageLocation location = storageLocationRepository.findById(request.locationId())
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "StorageLocation not found: " + request.getLocationId()));
+                        "StorageLocation not found: " + request.locationId()));
 
-        Cooperative cooperative = cooperativeRepository.findById(request.getCooperativeId())
+        Cooperative cooperative = cooperativeRepository.findById(request.cooperativeId())
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "Cooperative not found: " + request.getCooperativeId()));
+                        "Cooperative not found: " + request.cooperativeId()));
 
         StockItem stockItem = StockItem.builder()
                 .product(product)
                 .location(location)
                 .cooperative(cooperative)
-                .lotNumber(request.getLotNumber())
-                .quantity(request.getQuantity())
-                .unit(request.getUnit())
-                .weightDeclared(request.getWeightDeclared())
-                .weightActual(request.getWeightActual())
-                .receptionDate(request.getReceptionDate())
-                .expirationDate(request.getExpirationDate())
-                .bestBefore(request.getBestBefore())
-                .status(request.getStatus() != null ? request.getStatus() : StockItem.StockStatus.available)
-                .statusReason(request.getStatusReason())
-                .receptionTemp(request.getReceptionTemp())
+                .lotNumber(request.lotNumber())
+                .quantity(request.quantity().floatValue())
+                .unit(request.unit())
+                .weightDeclared(request.weightDeclared().floatValue())
+                .weightActual(request.weightActual().floatValue())
+                .receptionDate(request.receptionDate())
+                .expirationDate(request.expirationDate())
+                .bestBefore(request.bestBefore())
+                .status(request.status() != null ? request.status() : StockItem.StockStatus.AVAILABLE)
+                .statusReason(request.statusReason())
+                .receptionTemp(request.receptionTemp().floatValue())
                 .build();
 
         stockItem = stockItemRepository.save(stockItem);
-        return StockItemResponse.from(stockItem);
+        return stockItemMapper.getDto(stockItem);
     }
 
 
-    public StockItemResponse getById(UUID id) {
+    public StockItemDto getById(UUID id) {
         StockItem stockItem = stockItemRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "StockItem not found: " + id));
-        return StockItemResponse.from(stockItem);
+        return stockItemMapper.getDto(stockItem);
     }
 
 
-    public Page<StockItemResponse> list(Pageable pageable) {
+    public Page<StockItemDto> list(Pageable pageable) {
         return stockItemRepository.findAll(pageable)
-                .map(StockItemResponse::from);
+                .map(stockItemMapper::getDto);
     }
 
 
-    public Page<StockItemResponse> search(
+    public Page<StockItemDto> search(
             UUID productId,
             UUID cooperativeId,
             UUID locationId,
@@ -85,68 +86,67 @@ public class StockItemService {
             Pageable pageable) {
 
         return stockItemRepository.findWithFilters(productId, cooperativeId, locationId, status, lotNumber, pageable)
-                .map(StockItemResponse::from);
+                .map(stockItemMapper::getDto);
     }
 
-    public List<StockItemResponse> findExpiringSoon(int daysAhead) {
+    public List<StockItemDto> findExpiringSoon(int daysAhead) {
         LocalDate limit = LocalDate.now().plusDays(daysAhead);
         return stockItemRepository.findExpiringBefore(limit).stream()
-                .map(StockItemResponse::from)
-                .toList();
+                .map(stockItemMapper::getDto).toList();
     }
 
-    public List<StockItemResponse> findLowStock(BigDecimal threshold) {
+    public List<StockItemDto> findLowStock(BigDecimal threshold) {
         return stockItemRepository.findLowStock(threshold).stream()
-                .map(StockItemResponse::from)
+                .map(stockItemMapper::getDto)
                 .toList();
     }
 
 
 
     @Transactional
-    public StockItemResponse update(UUID id, StockItemRequest request) {
+    public StockItemDto update(UUID id, StockItemDto request) {
         StockItem stockItem = stockItemRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "StockItem not found: " + id));
 
-        Product product = productRepository.findById(request.getProductId())
+        Product product = productRepository.findById(request.productId())
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "Product not found: " + request.getProductId()));
+                        "Product not found: " + request.productId()));
 
-        StorageLocation location = storageLocationRepository.findById(request.getLocationId())
+        StorageLocation location = storageLocationRepository.findById(request.locationId())
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "StorageLocation not found: " + request.getLocationId()));
+                        "StorageLocation not found: " + request.locationId()));
 
-        Cooperative cooperative = cooperativeRepository.findById(request.getCooperativeId())
+        Cooperative cooperative = cooperativeRepository.findById(request.cooperativeId())
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "Cooperative not found: " + request.getCooperativeId()));
+                        "Cooperative not found: " + request.cooperativeId()));
 
         stockItem.setProduct(product);
         stockItem.setLocation(location);
         stockItem.setCooperative(cooperative);
-        stockItem.setLotNumber(request.getLotNumber());
-        stockItem.setQuantity(request.getQuantity());
-        stockItem.setUnit(request.getUnit());
-        stockItem.setWeightDeclared(request.getWeightDeclared());
-        stockItem.setWeightActual(request.getWeightActual());
-        stockItem.setReceptionDate(request.getReceptionDate());
-        stockItem.setExpirationDate(request.getExpirationDate());
-        stockItem.setBestBefore(request.getBestBefore());
-        if (request.getStatus() != null) stockItem.setStatus(request.getStatus());
-        stockItem.setStatusReason(request.getStatusReason());
-        stockItem.setReceptionTemp(request.getReceptionTemp());
+        stockItem.setLotNumber(request.lotNumber());
+        stockItem.setQuantity(request.quantity().floatValue());
+        stockItem.setUnit(request.unit());
+        stockItem.setWeightDeclared(request.weightDeclared().floatValue());
+        stockItem.setWeightActual(request.weightActual().floatValue());
+        stockItem.setReceptionDate(request.receptionDate());
+        stockItem.setExpirationDate(request.expirationDate());
+        stockItem.setBestBefore(request.bestBefore());
+        if (request.status() != null) stockItem.setStatus(request.status());
+        stockItem.setStatusReason(request.statusReason());
+        stockItem.setReceptionTemp(request.receptionTemp().floatValue());
 
         stockItem = stockItemRepository.save(stockItem);
-        return StockItemResponse.from(stockItem);
+        return stockItemMapper.getDto(stockItem);
     }
 
     @Transactional
-    public StockItemResponse updateStatus(UUID id, UpdateStatusRequest request) {
+    public StockItemDto updateStatus(UUID id, UpdateStatusRequest request) {
         StockItem stockItem = stockItemRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "StockItem not found: " + id));
 
-        if (stockItem.getStatus() == StockItem.StockStatus.consumed) {
+        if (stockItem.getStatus() == StockItem.StockStatus.CONSUMED) {
             throw new IllegalArgumentException("Cannot change status of a consumed stock item");
         }
 
@@ -154,7 +154,7 @@ public class StockItemService {
         stockItem.setStatusReason(request.getReason());
 
         stockItem = stockItemRepository.save(stockItem);
-        return StockItemResponse.from(stockItem);
+        return stockItemMapper.getDto(stockItem);
     }
 
 
