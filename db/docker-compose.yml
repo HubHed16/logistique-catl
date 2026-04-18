@@ -24,6 +24,7 @@ services:
       POSTGRES_PASSWORD: wms_password
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U wms_user -d wms"]
       interval: 10s

@@ -1,0 +1,543 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: 002-create-infrastructure
+      author: hugomalaquin
+      changes:
+        - createTable:
+            tableName: infrastructure
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: producer_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: dry_surface_m2
+                  type: int
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: fresh_surface_m2
+                  type: int
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: frozen_surface_m2
+                  type: int
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: prep_surface_m2
+                  type: int
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+        - sql:
+            sql: >
+              ALTER TABLE infrastructure
+              ADD CONSTRAINT chk_infra_surfaces_non_negative
+              CHECK (dry_surface_m2 >= 0 AND fresh_surface_m2 >= 0
+                     AND frozen_surface_m2 >= 0 AND prep_surface_m2 >= 0);
+
+  - changeSet:
+      id: 003-create-vehicle
+      author: hugomalaquin
+      changes:
+        - createTable:
+            tableName: vehicle
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: producer_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: type
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: fuel
+                  type: varchar(30)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: consumption_l_100km
+                  type: numeric(5,2)
+              - column:
+                  name: fuel_price
+                  type: numeric(6,3)
+              - column:
+                  name: amortization_eur_km
+                  type: numeric(6,3)
+              - column:
+                  name: refrigerated
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: driver_type
+                  type: varchar(30)
+              - column:
+                  name: hourly_cost
+                  type: numeric(6,2)
+              - column:
+                  name: prep_time_min
+                  type: int
+                  defaultValueNumeric: 0
+              - column:
+                  name: loading_time_min
+                  type: int
+                  defaultValueNumeric: 0
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: deleted_at
+                  type: timestamptz
+        - sql:
+            sql: >
+              ALTER TABLE vehicle
+              ADD CONSTRAINT chk_vehicle_type
+              CHECK (type IN ('van','light_truck','heavy_truck'));
+        - sql:
+            sql: >
+              ALTER TABLE vehicle
+              ADD CONSTRAINT chk_vehicle_fuel
+              CHECK (fuel IN ('diesel','gasoline','cng','electric','hybrid'));
+        - sql:
+            sql: >
+              ALTER TABLE vehicle
+              ADD CONSTRAINT chk_vehicle_driver
+              CHECK (driver_type IN ('employee','owner','external'));
+
+  - changeSet:
+      id: 004-create-customer
+      author: hugomalaquin
+      changes:
+        - createTable:
+            tableName: customer
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: producer_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: type
+                  type: varchar(50)
+              - column:
+                  name: address
+                  type: varchar(500)
+              - column:
+                  name: latitude
+                  type: numeric(9,6)
+              - column:
+                  name: longitude
+                  type: numeric(9,6)
+              - column:
+                  name: contact_email
+                  type: varchar(255)
+              - column:
+                  name: contact_phone
+                  type: varchar(30)
+              - column:
+                  name: delivery_hours
+                  type: varchar(255)
+              - column:
+                  name: notes
+                  type: text
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: deleted_at
+                  type: timestamptz
+        - createIndex:
+            tableName: customer
+            indexName: idx_customer_producer
+            columns:
+              - column:
+                  name: producer_id
+        - sql:
+            sql: >
+              ALTER TABLE customer
+              ADD CONSTRAINT chk_customer_type
+              CHECK (type IN ('restaurant','school','csa','shop','individual','pickup_point','other'));
+
+  - changeSet:
+      id: 005-create-route
+      author: hugomalaquin
+      changes:
+        - createTable:
+            tableName: route
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: producer_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: vehicle_id
+                  type: uuid
+                  constraints:
+                    foreignKeyName: fk_route_vehicle
+                    references: vehicle(id)
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: day_of_week
+                  type: varchar(10)
+              - column:
+                  name: scheduled_date
+                  type: date
+              - column:
+                  name: status
+                  type: varchar(20)
+                  defaultValue: draft
+                  constraints:
+                    nullable: false
+              - column:
+                  name: distance_km
+                  type: numeric(8,2)
+              - column:
+                  name: duration_min
+                  type: int
+              - column:
+                  name: total_cost
+                  type: numeric(10,2)
+              - column:
+                  name: total_revenue
+                  type: numeric(10,2)
+              - column:
+                  name: profitability_ratio
+                  type: numeric(6,3)
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: deleted_at
+                  type: timestamptz
+        - createIndex:
+            tableName: route
+            indexName: idx_route_producer
+            columns:
+              - column:
+                  name: producer_id
+        - addUniqueConstraint:
+            tableName: route
+            columnNames: producer_id, name, day_of_week
+            constraintName: uq_route_producer_name_day
+        - sql:
+            sql: >
+              ALTER TABLE route
+              ADD CONSTRAINT chk_route_status
+              CHECK (status IN ('draft','validated','completed','cancelled'));
+        - sql:
+            sql: >
+              ALTER TABLE route
+              ADD CONSTRAINT chk_route_day_of_week
+              CHECK (day_of_week IS NULL OR day_of_week IN
+                ('monday','tuesday','wednesday','thursday','friday','saturday','sunday'));
+
+  - changeSet:
+      id: 006-create-stop
+      author: hugomalaquin
+      changes:
+        - createTable:
+            tableName: stop
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: route_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_stop_route
+                    references: route(id)
+                    deleteCascade: true
+              - column:
+                  name: customer_id
+                  type: uuid
+                  constraints:
+                    foreignKeyName: fk_stop_customer
+                    references: customer(id)
+              - column:
+                  name: sequence
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: operation
+                  type: varchar(30)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: amount_eur
+                  type: numeric(10,2)
+                  defaultValueNumeric: 0
+              - column:
+                  name: duration_min
+                  type: int
+                  defaultValueNumeric: 15
+              - column:
+                  name: distance_from_prev_km
+                  type: numeric(8,2)
+              - column:
+                  name: latitude
+                  type: numeric(9,6)
+              - column:
+                  name: longitude
+                  type: numeric(9,6)
+              - column:
+                  name: address
+                  type: varchar(500)
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: stop
+            columnNames: route_id, sequence
+            constraintName: uq_stop_route_sequence
+        - createIndex:
+            tableName: stop
+            indexName: idx_stop_route
+            columns:
+              - column:
+                  name: route_id
+        - sql:
+            sql: >
+              ALTER TABLE stop
+              ADD CONSTRAINT chk_stop_operation
+              CHECK (operation IN ('delivery','pickup','relay_point'));
+        - sql:
+            sql: >
+              ALTER TABLE stop
+              ADD CONSTRAINT chk_stop_sequence_positive
+              CHECK (sequence > 0);
+
+  - changeSet:
+      id: 007-create-product
+      author: hugomalaquin
+      changes:
+        - createTable:
+            tableName: product
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: producer_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: category
+                  type: varchar(20)
+              - column:
+                  name: unit
+                  type: varchar(20)
+              - column:
+                  name: unit_price
+                  type: numeric(10,2)
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: deleted_at
+                  type: timestamptz
+        - sql:
+            sql: >
+              ALTER TABLE product
+              ADD CONSTRAINT chk_product_category
+              CHECK (category IS NULL OR category IN ('dry','fresh','frozen'));
+
+  - changeSet:
+      id: 008-create-stop-item
+      author: hugomalaquin
+      changes:
+        - createTable:
+            tableName: stop_item
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: stop_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_stop_item_stop
+                    references: stop(id)
+                    deleteCascade: true
+              - column:
+                  name: product_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_stop_item_product
+                    references: product(id)
+              - column:
+                  name: quantity
+                  type: numeric(10,3)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: unit_price
+                  type: numeric(10,2)
+        - createIndex:
+            tableName: stop_item
+            indexName: idx_stop_item_stop
+            columns:
+              - column:
+                  name: stop_id
+
+  - changeSet:
+      id: 009-trigger-updated-at
+      author: hugomalaquin
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE OR REPLACE FUNCTION set_updated_at()
+              RETURNS TRIGGER AS $$
+              BEGIN
+                NEW.updated_at = now();
+                RETURN NEW;
+              END;
+              $$ LANGUAGE plpgsql;
+        - sql:
+            splitStatements: false
+            sql: |
+              DO $$
+              DECLARE t text;
+              BEGIN
+                FOR t IN SELECT unnest(ARRAY[
+                  'infrastructure','vehicle','customer',
+                  'route','stop','product'
+                ])
+                LOOP
+                  EXECUTE format(
+                    'CREATE TRIGGER trg_%1$s_updated_at
+                     BEFORE UPDATE ON %1$s
+                     FOR EACH ROW EXECUTE FUNCTION set_updated_at();', t);
+                END LOOP;
+              END $$;

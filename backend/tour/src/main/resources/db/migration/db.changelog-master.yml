@@ -1,0 +1,5 @@
+databaseChangeLog:
+  - include:
+      file: db/migration/changelogs/0001-initial-schema.yml
+  - include:
+      file: db/migration/changelogs/0002-seed-demo-dev.yml
