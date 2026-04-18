@@ -7,6 +7,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { AddressAutocomplete } from "@/components/simulator/AddressAutocomplete";
 import { CustomerPicker } from "@/components/simulator/CustomerPicker";
+import { StopItemsSection } from "@/components/simulator/StopItemsSection";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
 import {
@@ -32,6 +33,7 @@ type Props = {
   producerId: string;
   routeId: string;
   stop?: ApiStop | null;
+  initialCoords?: { lat: number; lng: number } | null;
   onSaved?: (stop: ApiStop) => void;
   onCancel?: () => void;
 };
@@ -40,12 +42,14 @@ export function StopForm({
   producerId,
   routeId,
   stop,
+  initialCoords,
   onSaved,
   onCancel,
 }: Props) {
   const isEdit = !!stop;
   const createStop = useCreateStop(routeId, producerId);
   const updateStop = useUpdateStop(routeId, stop?.id ?? "", producerId);
+  const hasInitialCoords = !isEdit && !!initialCoords;
 
   // Pour récupérer le customer déjà lié en cas d'édition, on consulte le cache
   // des clients du producteur (fait dans le picker aussi).
@@ -55,7 +59,7 @@ export function StopForm({
     : null;
 
   const [mode, setMode] = useState<"customer" | "address">(
-    stop?.customerId ? "customer" : "address",
+    hasInitialCoords ? "address" : stop?.customerId ? "customer" : "address",
   );
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
     initialCustomer,
@@ -65,11 +69,15 @@ export function StopForm({
     resolver: zodResolver(stopFormSchema),
     mode: "onBlur",
     defaultValues: {
-      mode: stop?.customerId ? "customer" : "address",
+      mode: hasInitialCoords
+        ? "address"
+        : stop?.customerId
+          ? "customer"
+          : "address",
       customerId: stop?.customerId ?? "",
       address: stop?.address ?? "",
-      latitude: stop?.latitude ?? undefined,
-      longitude: stop?.longitude ?? undefined,
+      latitude: hasInitialCoords ? initialCoords!.lat : stop?.latitude ?? undefined,
+      longitude: hasInitialCoords ? initialCoords!.lng : stop?.longitude ?? undefined,
       operation: stop?.operation ?? "delivery",
       amountEur: stop?.amountEur ?? 0,
       durationMin: stop?.durationMin ?? 15,
@@ -204,16 +212,32 @@ export function StopForm({
         ) : (
           <Field
             label="Adresse"
-            required
             error={errors.address?.message}
-            hint="Sélectionne une suggestion pour récupérer les coordonnées."
+            hint={
+              hasInitialCoords
+                ? "Coordonnées capturées depuis la carte — adresse facultative."
+                : "Sélectionne une suggestion pour récupérer les coordonnées."
+            }
           >
+            {hasInitialCoords && (
+              <div className="mb-2 inline-flex items-center gap-1.5 text-xs text-catl-primary bg-catl-accent/10 border border-catl-accent/30 rounded-md px-2 py-1">
+                <MapPin className="w-3 h-3" />
+                <span className="font-mono">
+                  Point carte : {initialCoords!.lat.toFixed(5)},{" "}
+                  {initialCoords!.lng.toFixed(5)}
+                </span>
+              </div>
+            )}
             <AddressAutocomplete
               value={address ?? ""}
               onChangeText={(t) => {
                 setValue("address", t);
-                setValue("latitude", undefined);
-                setValue("longitude", undefined);
+                // Si on vient d'un clic-carte, on conserve les coords tant
+                // que l'utilisateur ne choisit pas une vraie suggestion.
+                if (!hasInitialCoords) {
+                  setValue("latitude", undefined);
+                  setValue("longitude", undefined);
+                }
                 void trigger(["address", "latitude", "longitude"]);
               }}
               onPick={(r) => {
@@ -270,6 +294,15 @@ export function StopForm({
             {isEdit ? "Enregistrer" : "Ajouter l'arrêt"}
           </Button>
         </div>
+
+        {isEdit && stop?.id ? (
+          <StopItemsSection stopId={stop.id} producerId={producerId} />
+        ) : (
+          <p className="mt-4 pt-4 border-t border-gray-100 text-xs italic text-catl-text">
+            Les produits livrés se saisissent après la première sauvegarde de
+            l'arrêt.
+          </p>
+        )}
       </div>
     </form>
   );

@@ -118,12 +118,10 @@ export const stopFormSchema = z
     (v) =>
       v.mode === "customer"
         ? !!v.customerId
-        : !!v.address &&
-          typeof v.latitude === "number" &&
-          typeof v.longitude === "number",
+        : typeof v.latitude === "number" && typeof v.longitude === "number",
     {
       message:
-        "Sélectionne un client ou une adresse géolocalisée (avec suggestion).",
+        "Sélectionne un client ou un point sur la carte (clic ou suggestion d'adresse).",
       path: ["address"],
     },
   );
@@ -146,3 +144,19 @@ export const customerFormSchema = z.object({
 
 export type CustomerFormInput = z.input<typeof customerFormSchema>;
 export type CustomerFormValues = z.output<typeof customerFormSchema>;
+
+// ─── Stop item (ligne produit d'un arrêt) ─────────────────────────────────
+export const stopItemFormSchema = z.object({
+  productId: z.string().uuid("Produit requis"),
+  quantity: z.coerce.number().positive("Quantité > 0").max(1_000_000),
+  unitPrice: z
+    .union([
+      z.coerce.number().min(0).max(1_000_000),
+      z.literal("").transform(() => null),
+    ])
+    .nullable()
+    .optional(),
+});
+
+export type StopItemFormInput = z.input<typeof stopItemFormSchema>;
+export type StopItemFormValues = z.output<typeof stopItemFormSchema>;

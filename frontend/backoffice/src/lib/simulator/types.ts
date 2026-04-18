@@ -32,6 +32,9 @@ export type RoutePage = components["schemas"]["RoutePage"];
 export type ApiStop = components["schemas"]["Stop"];
 export type StopCreate = components["schemas"]["StopCreate"];
 export type StopUpdate = components["schemas"]["StopUpdate"];
+export type StopItem = components["schemas"]["StopItem"];
+export type StopItemCreate = components["schemas"]["StopItemCreate"];
+export type StopItemUpdate = components["schemas"]["StopItemUpdate"];
 
 export type OptimizationInput = components["schemas"]["OptimizationInput"];
 export type OptimizationResult = components["schemas"]["OptimizationResult"];
