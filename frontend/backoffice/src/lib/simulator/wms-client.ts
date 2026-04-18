@@ -81,9 +81,19 @@ export async function wmsGetProducer(id: string): Promise<Producer | null> {
   return toProducer(data);
 }
 
-// Seule façon de créer/mettre à jour un producteur : PATCH sur l'ID.
-// La création exige que l'ID existe déjà côté DB — donc côté front, ce
-// hook ne sert qu'à la mise à jour tant que wms n'expose pas POST.
+export async function wmsCreateProducer(
+  body: Omit<Producer, "id">,
+): Promise<Producer> {
+  const res = await fetch(`/api/wms/producers`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(toWmsDto(body)),
+  });
+  if (!res.ok) await parseError(res, "Création impossible");
+  const data = (await res.json()) as WmsProducerDto;
+  return toProducer(data);
+}
+
 export async function wmsUpdateProducer(
   id: string,
   body: Omit<Producer, "id">,

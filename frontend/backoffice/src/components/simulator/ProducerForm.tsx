@@ -6,7 +6,7 @@ import { useEffect, useRef } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
-import { Field, Input } from "@/components/ui/Field";
+import { Field, Input, Select } from "@/components/ui/Field";
 import { AddressAutocomplete } from "@/components/simulator/AddressAutocomplete";
 import {
   useUpdateProducer,
@@ -19,9 +19,6 @@ import {
 } from "@/lib/simulator/schemas";
 import { type Producer } from "@/lib/simulator/types";
 
-// Liste figée des provinces wallonnes + Bruxelles — la DTO back prend
-// une string libre, mais l'UI suggère ce jeu via datalist pour garder
-// des données cohérentes (saisie libre reste possible).
 const PROVINCE_OPTIONS = [
   "Liège",
   "Hainaut",
@@ -133,17 +130,14 @@ export function ProducerForm({ producer }: { producer: Producer }) {
           </div>
 
           <Field label="Province" error={errors.province?.message}>
-            <Input
-              list="producer-provinces"
-              placeholder="Ex : Liège"
-              invalid={!!errors.province}
-              {...register("province")}
-            />
-            <datalist id="producer-provinces">
+            <Select invalid={!!errors.province} {...register("province")}>
+              <option value="">— Sélectionner —</option>
               {PROVINCE_OPTIONS.map((p) => (
-                <option key={p} value={p} />
+                <option key={p} value={p}>
+                  {p}
+                </option>
               ))}
-            </datalist>
+            </Select>
           </Field>
 
           <label
