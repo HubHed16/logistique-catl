@@ -17,6 +17,8 @@ import type {
   RouteStatus,
   RouteUpdate,
   StopCreate,
+  StopItemCreate,
+  StopItemUpdate,
   StopUpdate,
   VehicleCreate,
   VehicleUpdate,
@@ -98,6 +100,8 @@ const customersKey = (producerId: string | undefined, search?: string) =>
     producerId ?? "-",
     { search: (search ?? "").trim() },
   ] as const;
+const stopItemsKey = (stopId: string | undefined) =>
+  ["stop-items", stopId ?? "-"] as const;
 
 // ─── Producers ─────────────────────────────────────────────────────────────
 // Les producteurs sont la source de vérité de wms-api. Tour-api ne proxie
@@ -366,6 +370,38 @@ export function useRoute(routeId: string | null | undefined) {
   });
 }
 
+// Statut de verrouillage d'un trajet — terminal (completed/cancelled) ou
+// validé le jour même. Utilisé à la fois par l'éditeur sidebar et la carte
+// pour activer/désactiver les actions d'édition (ajout d'arrêts, etc.).
+export function useRouteLockStatus(routeId: string | null | undefined): {
+  isLoading: boolean;
+  isTerminal: boolean;
+  isValidated: boolean;
+  isScheduledToday: boolean;
+  isLocked: boolean;
+} {
+  const { data: route, isLoading } = useRoute(routeId);
+  if (!route) {
+    // Pas de route chargée ⇒ on verrouille par défaut : le consommateur qui
+    // veut éviter toute action sans route active est protégé.
+    return {
+      isLoading,
+      isTerminal: false,
+      isValidated: false,
+      isScheduledToday: false,
+      isLocked: true,
+    };
+  }
+  const isTerminal =
+    route.status === "completed" || route.status === "cancelled";
+  const isValidated = route.status === "validated";
+  const todayIso = new Date().toLocaleDateString("en-CA");
+  const isScheduledToday =
+    !!route.scheduledDate && route.scheduledDate === todayIso;
+  const isLocked = isTerminal || (isValidated && isScheduledToday);
+  return { isLoading, isTerminal, isValidated, isScheduledToday, isLocked };
+}
+
 export function useCreateRoute() {
   const qc = useQueryClient();
   return useMutation({
@@ -575,6 +611,69 @@ export function useCreateCustomer() {
       qc.invalidateQueries({
         queryKey: ["customers", variables.producerId] as const,
       });
+    },
+  });
+}
+
+// ─── Stop items (lignes produit par arrêt) ─────────────────────────────────
+
+export function useStopItems(stopId: string | null | undefined) {
+  return useQuery({
+    queryKey: stopItemsKey(stopId ?? undefined),
+    queryFn: async () =>
+      unwrap(
+        await apiClient.GET("/stops/{stopId}/items", {
+          params: { path: { stopId: stopId! } },
+        }),
+      ),
+    enabled: !!stopId,
+    staleTime: 15_000,
+  });
+}
+
+export function useCreateStopItem(stopId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: StopItemCreate) =>
+      unwrap(
+        await apiClient.POST("/stops/{stopId}/items", {
+          params: { path: { stopId } },
+          body,
+        }),
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: stopItemsKey(stopId) });
+    },
+  });
+}
+
+export function useUpdateStopItem(stopId: string, itemId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: StopItemUpdate) =>
+      unwrap(
+        await apiClient.PUT("/stops/{stopId}/items/{itemId}", {
+          params: { path: { stopId, itemId } },
+          body,
+        }),
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: stopItemsKey(stopId) });
+    },
+  });
+}
+
+export function useDeleteStopItem(stopId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (itemId: string) => {
+      const res = await apiClient.DELETE("/stops/{stopId}/items/{itemId}", {
+        params: { path: { stopId, itemId } },
+      });
+      assertOk(res.response, "Suppression ligne produit impossible");
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: stopItemsKey(stopId) });
     },
   });
 }
