@@ -9,15 +9,12 @@ export const CURRENT_PRODUCER_KEY = "catl.simulator.currentProducerId.v1";
 export type SimulatorState = {
   /** UUID du producteur actuellement sélectionné (ou null si aucun). */
   currentProducerId: string | null;
-  /** L'utilisateur est en mode "clic carte pour placer le dépôt". */
-  pickMode: boolean;
   /** Route sélectionnée pour édition (phase 2). */
   activeRouteId: string | null;
 };
 
 export type SimulatorAction =
   | { type: "setCurrentProducer"; producerId: string | null }
-  | { type: "setPickMode"; pickMode: boolean }
   | { type: "setActiveRoute"; routeId: string | null };
 
 export function simulatorReducer(
@@ -26,9 +23,11 @@ export function simulatorReducer(
 ): SimulatorState {
   switch (action.type) {
     case "setCurrentProducer":
-      return { ...state, currentProducerId: action.producerId };
-    case "setPickMode":
-      return { ...state, pickMode: action.pickMode };
+      return {
+        ...state,
+        currentProducerId: action.producerId,
+        activeRouteId: null,
+      };
     case "setActiveRoute":
       return { ...state, activeRouteId: action.routeId };
   }
@@ -37,7 +36,6 @@ export function simulatorReducer(
 export function initialState(): SimulatorState {
   return {
     currentProducerId: null,
-    pickMode: false,
     activeRouteId: null,
   };
 }

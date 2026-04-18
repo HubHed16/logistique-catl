@@ -1,21 +1,19 @@
 import createClient from "openapi-fetch";
 import type { paths } from "./types";
-import { producersMock } from "./mocks/producers";
 import { geoMock } from "./mocks/geo";
 
-// Base URL — le back tour-api expose les routes à la racine (pas /api/v1
-// malgré ce que dit le champ `servers:` de l'OpenAPI). On force via env.
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
+// Base URL relative → les Route Handlers sous src/app/api/tour/[...path]
+// proxient /api/tour/* vers tour-api. Avantage : même origine côté browser
+// (pas de CORS), la cible du proxy est lue côté serveur à chaque requête.
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api/tour";
 
 export const apiClient = createClient<paths>({
   baseUrl: BASE_URL,
-  // JSON par défaut, middlewares geo/producers se greffent ci-dessous
 });
 
-// Middlewares mock — à retirer au fur et à mesure que le back expose
-// officiellement les endpoints correspondants.
-apiClient.use(producersMock);
+// Mock /geo/geocode + /geo/route (tour-api renvoie 501 en attendant les
+// providers officiels). Les producers, eux, sont servis en direct par
+// wms-api via /api/wms/* (cf. lib/simulator/wms-client.ts).
 apiClient.use(geoMock);
 
 export type ApiClient = typeof apiClient;

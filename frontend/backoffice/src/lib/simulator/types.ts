@@ -5,8 +5,9 @@
 import type { components } from "@/lib/apigen/types";
 
 export type Producer = components["schemas"]["Producer"];
-export type ProducerCreate = components["schemas"]["ProducerCreate"];
-export type ProducerUpdate = components["schemas"]["ProducerUpdate"];
+// tour-api n'expose que GET /producers (proxy vers wms-api). Les opérations
+// d'écriture passent en direct par wms-api — cf. simulator/wms-client.ts.
+export type ProducerUpdate = Omit<Producer, "id">;
 
 export type Infrastructure = components["schemas"]["Infrastructure"];
 export type InfrastructureUpdate =
@@ -27,9 +28,16 @@ export type ApiRoute = components["schemas"]["Route"];
 export type RouteDetail = components["schemas"]["RouteDetail"];
 export type RouteCreate = components["schemas"]["RouteCreate"];
 export type RouteUpdate = components["schemas"]["RouteUpdate"];
+export type RoutePage = components["schemas"]["RoutePage"];
 export type ApiStop = components["schemas"]["Stop"];
 export type StopCreate = components["schemas"]["StopCreate"];
 export type StopUpdate = components["schemas"]["StopUpdate"];
+
+export type Customer = components["schemas"]["Customer"];
+export type CustomerCreate = components["schemas"]["CustomerCreate"];
+export type CustomerUpdate = components["schemas"]["CustomerUpdate"];
+export type CustomerPage = components["schemas"]["CustomerPage"];
+export type CustomerType = components["schemas"]["CustomerType"];
 
 // Labels français pour les enums — l'UI doit traduire, le back reste en
 // anglais comme dans l'OpenAPI.
@@ -67,6 +75,16 @@ export const STOP_OPERATION_LABELS: Record<StopOperation, string> = {
   delivery: "📦 Livraison",
   pickup: "🚜 Collecte",
   relay_point: "🏬 Point relais",
+};
+
+export const CUSTOMER_TYPE_LABELS: Record<CustomerType, string> = {
+  restaurant: "Restaurant",
+  school: "École / cantine",
+  csa: "AMAP / panier",
+  shop: "Magasin",
+  individual: "Particulier",
+  pickup_point: "Point relais",
+  other: "Autre",
 };
 
 // Liste des métiers / productions (conservée côté front, le back accepte

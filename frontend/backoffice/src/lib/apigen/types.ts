@@ -14,30 +14,8 @@ export interface paths {
         /** List producers */
         get: operations["listProducers"];
         put?: never;
-        /** Create a producer */
-        post: operations["createProducer"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/producers/{producerId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                producerId: components["parameters"]["ProducerId"];
-            };
-            cookie?: never;
-        };
-        /** Get a producer */
-        get: operations["getProducer"];
-        /** Update a producer */
-        put: operations["updateProducer"];
         post?: never;
-        /** Soft-delete a producer */
-        delete: operations["deleteProducer"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -503,10 +481,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/optimization/daily-routing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Optimize direct-vs-hub assignment for a producer's daily deliveries
+         * @description Solves a MILP that assigns each planned delivery stop (for the given
+         *     producer and date) either to a direct delivery by the producer, or to
+         *     transit through one of the coop-available hubs for xDock last-mile.
+         *     Minimizes the total daily cost including producer fleet cost, hub
+         *     fleet cost, handling fees and the detour cost of visiting a hub.
+         */
+        post: operations["optimizeDailyRouting"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        Producer: {
+            /** Format: uuid */
+            readonly id: string;
+            name: string;
+            contact?: string | null;
+            address?: string | null;
+            province?: string | null;
+            /** @default false */
+            isBio: boolean;
+        };
+        ProducerPage: components["schemas"]["Page"] & {
+            items?: components["schemas"]["Producer"][];
+        };
         Error: {
             /** @example VALIDATION_FAILED */
             code: string;
@@ -540,48 +555,6 @@ export interface components {
         StopOperation: "delivery" | "pickup" | "relay_point";
         /** @enum {string} */
         ProductCategory: "dry" | "fresh" | "frozen";
-        Producer: {
-            /** Format: uuid */
-            readonly id: string;
-            name: string;
-            /** Format: email */
-            email: string;
-            address?: string | null;
-            /** Format: double */
-            latitude?: number | null;
-            /** Format: double */
-            longitude?: number | null;
-            trades?: string[];
-            /** Format: date-time */
-            readonly createdAt?: string;
-            /** Format: date-time */
-            readonly updatedAt?: string;
-        };
-        ProducerCreate: {
-            name: string;
-            /** Format: email */
-            email: string;
-            address?: string;
-            /** Format: double */
-            latitude?: number;
-            /** Format: double */
-            longitude?: number;
-            trades?: string[];
-        };
-        ProducerUpdate: {
-            name?: string;
-            /** Format: email */
-            email?: string;
-            address?: string;
-            /** Format: double */
-            latitude?: number;
-            /** Format: double */
-            longitude?: number;
-            trades?: string[];
-        };
-        ProducerPage: components["schemas"]["Page"] & {
-            items?: components["schemas"]["Producer"][];
-        };
         Infrastructure: {
             /** Format: uuid */
             readonly id?: string;
@@ -591,6 +564,10 @@ export interface components {
             freshSurfaceM2: number;
             frozenSurfaceM2: number;
             prepSurfaceM2: number;
+            /** Format: double */
+            depotLatitude?: number | null;
+            /** Format: double */
+            depotLongitude?: number | null;
             /** Format: date-time */
             readonly updatedAt?: string;
         };
@@ -599,6 +576,10 @@ export interface components {
             freshSurfaceM2?: number;
             frozenSurfaceM2?: number;
             prepSurfaceM2?: number;
+            /** Format: double */
+            depotLatitude?: number | null;
+            /** Format: double */
+            depotLongitude?: number | null;
         };
         Vehicle: {
             /** Format: uuid */
@@ -814,34 +795,38 @@ export interface components {
         Product: {
             /** Format: uuid */
             readonly id: string;
-            /** Format: uuid */
-            readonly producerId?: string;
             name: string;
-            category?: components["schemas"]["ProductCategory"];
-            /** @example kg */
-            unit?: string | null;
-            /** Format: double */
-            unitPrice?: number | null;
-            /** Format: date-time */
-            readonly createdAt?: string;
-            /** Format: date-time */
-            readonly updatedAt?: string;
+            category?: string | null;
+            ean?: string | null;
+            unit: string;
+            storageType?: string | null;
+            /** @default false */
+            isBio: boolean;
+            certification?: string | null;
+            /** Format: uuid */
+            readonly producerId: string;
         };
         ProductCreate: {
             /** Format: uuid */
             producerId: string;
             name: string;
-            category?: components["schemas"]["ProductCategory"];
-            unit?: string;
-            /** Format: double */
-            unitPrice?: number;
+            category?: string | null;
+            ean?: string | null;
+            unit: string;
+            storageType?: string | null;
+            /** @default false */
+            isBio: boolean;
+            certification?: string | null;
         };
         ProductUpdate: {
             name?: string;
-            category?: components["schemas"]["ProductCategory"];
+            category?: string | null;
+            ean?: string | null;
             unit?: string;
-            /** Format: double */
-            unitPrice?: number;
+            storageType?: string | null;
+            /** @default false */
+            isBio: boolean;
+            certification?: string | null;
         };
         ProductPage: components["schemas"]["Page"] & {
             items?: components["schemas"]["Product"][];
@@ -929,6 +914,117 @@ export interface components {
             /** Format: double */
             averageRatio?: number;
         };
+        OptimizationInput: {
+            /**
+             * Format: date
+             * @description Scheduled date of the routes to consider (all producers)
+             */
+            date: string;
+            /**
+             * Format: double
+             * @description Coop handling fee charged per unit of volume transiting through a hub
+             * @default 0
+             */
+            handlingFeePerUnit: number;
+            /**
+             * Format: double
+             * @description Flat fee applied each time a hub is used in the day
+             * @default 0
+             */
+            openingFee: number;
+            /**
+             * Format: int64
+             * @description Solver time budget in milliseconds
+             * @default 10000
+             */
+            maxSolveTimeMs: number;
+        };
+        OptimizationResult: {
+            /** Format: date */
+            date: string;
+            /** @description OPTIMAL | FEASIBLE | NO_STOPS | NO_PRODUCER_WITH_DEPOT | NO_HUBS_AVAILABLE */
+            solverStatus: string;
+            /** Format: int64 */
+            solveTimeMs?: number;
+            stopCount: number;
+            producerCount: number;
+            hubsAvailable?: number;
+            hubsUsed?: number;
+            /**
+             * Format: double
+             * @description Total cost if every producer delivered every stop direct from its own depot
+             */
+            baselineAllDirectCostEur: number;
+            /** Format: double */
+            optimizedCostEur: number;
+            /**
+             * Format: double
+             * @description baseline - optimized
+             */
+            savingsEur: number;
+            assignments: components["schemas"]["OptimizationStopAssignment"][];
+            /** @description Bulk drops each producer must perform at each used hub */
+            transfers: components["schemas"]["OptimizationProducerHubTransfer"][];
+            /** @description Per-hub last-mile manifest (all producers combined) */
+            pickingLists: components["schemas"]["OptimizationHubPickingList"][];
+        };
+        OptimizationStopAssignment: {
+            /** Format: uuid */
+            stopId: string;
+            /** Format: uuid */
+            routeId: string;
+            /** Format: uuid */
+            producerId: string;
+            sequence: number;
+            /** @enum {string} */
+            mode: "DIRECT" | "VIA_HUB";
+            /**
+             * Format: uuid
+             * @description Infrastructure ID of the chosen hub; null if mode=DIRECT
+             */
+            hubId?: string | null;
+            /** Format: double */
+            volume: number;
+            /** Format: double */
+            directCostEur: number;
+            /**
+             * Format: double
+             * @description Cost of the chosen hub last-mile; null if mode=DIRECT
+             */
+            viaHubCostEur?: number | null;
+        };
+        OptimizationProducerHubTransfer: {
+            /** Format: uuid */
+            producerId: string;
+            /** Format: uuid */
+            hubId: string;
+            /**
+             * Format: double
+             * @description Round-trip detour depot → hub → depot
+             */
+            detourKm: number;
+            /** Format: double */
+            detourCostEur: number;
+            /** Format: double */
+            totalVolume: number;
+            stopIds: string[];
+        };
+        OptimizationHubPickingList: {
+            /** Format: uuid */
+            hubId: string;
+            /** Format: uuid */
+            hubProducerId: string;
+            /** Format: double */
+            latitude: number;
+            /** Format: double */
+            longitude: number;
+            stopIds: string[];
+            contributingProducers: string[];
+            /** Format: double */
+            totalVolume: number;
+            /** Format: double */
+            openingCostEur: number;
+        };
     };
     responses: {
         /** @description Invalid request */
@@ -958,6 +1054,15 @@ export interface components {
                 "application/json": components["schemas"]["Error"];
             };
         };
+        /** @description Request rejected due to business rule violation */
+        UnprocessableEntity: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
     };
     parameters: {
         Limit: number;
@@ -980,7 +1085,6 @@ export interface operations {
     listProducers: {
         parameters: {
             query?: {
-                search?: string;
                 limit?: components["parameters"]["Limit"];
                 offset?: components["parameters"]["Offset"];
             };
@@ -998,101 +1102,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProducerPage"];
                 };
-            };
-        };
-    };
-    createProducer: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ProducerCreate"];
-            };
-        };
-        responses: {
-            /** @description Created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Producer"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-        };
-    };
-    getProducer: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                producerId: components["parameters"]["ProducerId"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Producer */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Producer"];
-                };
-            };
-            404: components["responses"]["NotFound"];
-        };
-    };
-    updateProducer: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                producerId: components["parameters"]["ProducerId"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ProducerUpdate"];
-            };
-        };
-        responses: {
-            /** @description Updated */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Producer"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-        };
-    };
-    deleteProducer: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                producerId: components["parameters"]["ProducerId"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Deleted */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
@@ -2069,6 +2078,31 @@ export interface operations {
                     "application/gpx+xml": string;
                 };
             };
+        };
+    };
+    optimizeDailyRouting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OptimizationInput"];
+            };
+        };
+        responses: {
+            /** @description Optimization result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OptimizationResult"];
+                };
+            };
+            422: components["responses"]["UnprocessableEntity"];
         };
     };
 }

@@ -1,85 +1,93 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
-import { ChevronDown, Plus, Users } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/Button";
-import { Field, Input } from "@/components/ui/Field";
-import { ApiError, useCreateProducer, useProducers } from "@/lib/simulator/api-hooks";
 import {
-  producerFormSchema,
-  type ProducerFormInput,
-  type ProducerFormValues,
-} from "@/lib/simulator/schemas";
-import { DEFAULT_MAP_CENTER } from "@/lib/simulator/types";
+  Check,
+  ChevronDown,
+  Info,
+  Leaf,
+  Search,
+  Users,
+  X,
+} from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useProducer,
+  useProducers,
+} from "@/lib/simulator/api-hooks";
+import { type Producer } from "@/lib/simulator/types";
 import { useSimulator } from "@/lib/simulator/state";
+import { useDebouncedValue } from "@/lib/hooks/useDebouncedValue";
 
 export function ProducerSelector() {
   const { state, dispatch } = useSimulator();
-  const { data, isLoading, isError } = useProducers();
-  const createMutation = useCreateProducer();
 
   const [open, setOpen] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const menuRef = useRef<HTMLDivElement | null>(null);
+  const [rawQuery, setRawQuery] = useState("");
+  const debouncedQuery = useDebouncedValue(rawQuery, 200);
 
-  // Ferme le dropdown au clic extérieur
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+
+  const query = useProducers();
+  const { data, isLoading, isError } = query;
+
+  // Filtre client-side — wms-api ne fournit pas de recherche serveur.
+  const items = useMemo<Producer[]>(() => {
+    const all = data ?? [];
+    const q = debouncedQuery.trim().toLowerCase();
+    if (!q) return all;
+    return all.filter((p) => {
+      const bag = [p.name, p.contact ?? "", p.address ?? "", p.province ?? ""]
+        .join(" ")
+        .toLowerCase();
+      return bag.includes(q);
+    });
+  }, [data, debouncedQuery]);
+  const total = data?.length ?? 0;
+
+  // Fallback : si le producteur actif a été supprimé ou s'il n'est pas
+  // dans la page chargée, on va chercher ses infos directement côté wms
+  // pour garder le nom visible dans le bouton.
+  const currentProducerQuery = useProducer(state.currentProducerId);
+  const current = useMemo(() => {
+    if (!state.currentProducerId) return null;
+    const all = data ?? [];
+    const inList = all.find((p) => p.id === state.currentProducerId);
+    return inList ?? currentProducerQuery.data ?? null;
+  }, [data, state.currentProducerId, currentProducerQuery.data]);
+
+  // Ferme au clic extérieur
   useEffect(() => {
+    if (!open) return;
     const onDoc = (e: MouseEvent) => {
-      if (!menuRef.current) return;
-      if (!menuRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+      if (!rootRef.current) return;
+      if (!rootRef.current.contains(e.target as Node)) setOpen(false);
     };
-    if (open) document.addEventListener("mousedown", onDoc);
+    document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
 
-  const current =
-    data?.items?.find((p) => p.id === state.currentProducerId) ?? null;
+  // Focus l'input à l'ouverture + Esc ferme.
+  useEffect(() => {
+    if (!open) return;
+    const id = window.setTimeout(() => searchInputRef.current?.focus(), 50);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      window.clearTimeout(id);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
 
-  const form = useForm<ProducerFormInput, unknown, ProducerFormValues>({
-    resolver: zodResolver(producerFormSchema),
-    mode: "onBlur",
-    defaultValues: {
-      name: "",
-      email: "",
-      address: "",
-      latitude: DEFAULT_MAP_CENTER[0],
-      longitude: DEFAULT_MAP_CENTER[1],
-      trades: [],
-    },
-  });
-
-  const onCreate = form.handleSubmit(async (values) => {
-    try {
-      const created = await createMutation.mutateAsync({
-        name: values.name,
-        email: values.email,
-        address: values.address || undefined,
-        latitude: values.latitude,
-        longitude: values.longitude,
-        trades: values.trades,
-      });
-      if (created.id) {
-        dispatch({
-          type: "setCurrentProducer",
-          producerId: created.id,
-        });
-      }
-      toast.success(`Producteur « ${created.name} » créé.`);
-      form.reset();
-      setCreating(false);
-      setOpen(false);
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Création impossible");
-    }
-  });
+  const highlightClass = (active: boolean) =>
+    active
+      ? "bg-catl-accent/10 border-l-2 border-catl-accent"
+      : "hover:bg-catl-bg border-l-2 border-transparent";
 
   return (
-    <div className="relative" ref={menuRef}>
+    <div className="relative" ref={rootRef}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -87,39 +95,72 @@ export function ProducerSelector() {
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <span className="flex items-center gap-2 text-catl-primary">
-          <Users className="w-4 h-4 text-catl-accent" />
-          <span className="font-semibold">
+        <span className="flex items-center gap-2 text-catl-primary min-w-0">
+          <Users className="w-4 h-4 text-catl-accent shrink-0" />
+          <span className="font-semibold truncate">
             {current ? current.name : "Choisir un producteur"}
           </span>
+          {current?.isBio && (
+            <Leaf
+              className="w-3.5 h-3.5 text-catl-success shrink-0"
+              aria-label="Bio"
+            />
+          )}
         </span>
         <ChevronDown
-          className={`w-4 h-4 transition-transform ${open ? "rotate-180" : ""}`}
+          className={`w-4 h-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
         />
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-[min(420px,90vw)] bg-white rounded-md shadow-xl border border-catl-primary/10 z-50 p-2">
-          {isLoading && (
-            <div className="p-3 text-sm text-catl-text">Chargement...</div>
-          )}
-          {isError && (
-            <div className="p-3 text-sm text-catl-danger">
-              Impossible de charger les producteurs.
-            </div>
-          )}
-          {!isLoading && !isError && (
-            <>
-              {(data?.items ?? []).length === 0 && (
-                <div className="p-3 text-sm text-catl-text italic">
-                  Aucun producteur enregistré.
-                </div>
-              )}
-              <ul className="max-h-64 overflow-y-auto">
-                {(data?.items ?? []).map((p) => {
+        <div className="absolute right-0 mt-2 w-[min(440px,92vw)] bg-white rounded-md shadow-xl border border-catl-primary/10 z-50 flex flex-col overflow-hidden">
+          <div className="relative p-2 border-b border-gray-100 bg-catl-bg/60">
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-catl-text" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={rawQuery}
+              onChange={(e) => setRawQuery(e.target.value)}
+              placeholder="Rechercher un producteur…"
+              className="w-full pl-9 pr-8 py-2 text-sm rounded-md border border-gray-200 bg-white focus:outline-none focus:border-catl-accent focus:ring-2 focus:ring-catl-accent/20 transition-colors"
+              aria-label="Rechercher un producteur"
+            />
+            {rawQuery && (
+              <button
+                type="button"
+                aria-label="Effacer la recherche"
+                onClick={() => setRawQuery("")}
+                className="absolute right-5 top-1/2 -translate-y-1/2 text-catl-text hover:text-catl-danger"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          <div className="max-h-72 overflow-y-auto">
+            {isLoading && (
+              <div className="p-4 text-sm text-catl-text">Chargement…</div>
+            )}
+            {isError && (
+              <div className="p-4 text-sm text-catl-danger">
+                Impossible de charger les producteurs.
+              </div>
+            )}
+            {!isLoading && !isError && items.length === 0 && (
+              <div className="p-6 text-center">
+                <p className="text-sm text-catl-text italic">
+                  {debouncedQuery
+                    ? `Aucun résultat pour « ${debouncedQuery} »`
+                    : "Aucun producteur enregistré côté wms-api."}
+                </p>
+              </div>
+            )}
+            {!isLoading && !isError && items.length > 0 && (
+              <ul role="listbox">
+                {items.map((p) => {
                   const active = p.id === state.currentProducerId;
                   return (
-                    <li key={p.id}>
+                    <li key={p.id} role="option" aria-selected={active}>
                       <button
                         type="button"
                         onClick={() => {
@@ -129,82 +170,54 @@ export function ProducerSelector() {
                           });
                           setOpen(false);
                         }}
-                        className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
-                          active
-                            ? "bg-catl-accent/10 text-catl-accent font-semibold"
-                            : "hover:bg-catl-bg text-catl-primary"
-                        }`}
+                        className={`w-full text-left px-3 py-2.5 flex items-start gap-2 transition-colors ${highlightClass(active)}`}
                       >
-                        <div className="font-medium">{p.name}</div>
-                        <div className="text-xs text-catl-text">{p.email}</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`font-semibold text-sm truncate ${active ? "text-catl-accent" : "text-catl-primary"}`}
+                            >
+                              {p.name}
+                            </span>
+                            {p.isBio && (
+                              <Leaf className="w-3 h-3 text-catl-success shrink-0" />
+                            )}
+                            {active && (
+                              <Check className="w-3.5 h-3.5 text-catl-accent shrink-0" />
+                            )}
+                          </div>
+                          <div className="text-xs text-catl-text truncate">
+                            {[p.province, p.address, p.contact]
+                              .filter(Boolean)
+                              .join(" · ") || "—"}
+                          </div>
+                        </div>
                       </button>
                     </li>
                   );
                 })}
               </ul>
+            )}
+          </div>
 
-              <div className="border-t border-gray-100 mt-2 pt-2">
-                {!creating ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    leftIcon={<Plus className="w-3.5 h-3.5" />}
-                    onClick={() => setCreating(true)}
-                    className="w-full justify-start"
-                  >
-                    Nouveau producteur
-                  </Button>
-                ) : (
-                  <form onSubmit={onCreate} noValidate className="space-y-3">
-                    <Field
-                      label="Nom"
-                      required
-                      error={form.formState.errors.name?.message}
-                    >
-                      <Input
-                        placeholder="Ex : Ferme du Soleil"
-                        invalid={!!form.formState.errors.name}
-                        {...form.register("name")}
-                      />
-                    </Field>
-                    <Field
-                      label="Email"
-                      required
-                      error={form.formState.errors.email?.message}
-                    >
-                      <Input
-                        type="email"
-                        placeholder="contact@ferme.com"
-                        invalid={!!form.formState.errors.email}
-                        {...form.register("email")}
-                      />
-                    </Field>
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          form.reset();
-                          setCreating(false);
-                        }}
-                      >
-                        Annuler
-                      </Button>
-                      <Button
-                        type="submit"
-                        size="sm"
-                        loading={createMutation.isPending}
-                      >
-                        Créer
-                      </Button>
-                    </div>
-                  </form>
-                )}
-              </div>
-            </>
+          {!isError && total > 0 && (
+            <div className="px-3 py-1.5 border-t border-gray-100 bg-white">
+              <span className="text-xs text-catl-text">
+                {items.length === total
+                  ? `${total} producteur${total > 1 ? "s" : ""}`
+                  : `${items.length} / ${total} producteurs`}
+              </span>
+            </div>
           )}
+
+          <div className="flex items-start gap-2 p-2 border-t border-gray-100 bg-catl-bg/40 text-[11px] text-catl-text">
+            <Info className="w-3.5 h-3.5 mt-0.5 shrink-0 text-catl-info" />
+            <span>
+              La création de producteur passera par wms-api quand l&apos;endpoint
+              POST sera livré. En attendant, modifie / supprime depuis l&apos;onglet
+              Producteurs.
+            </span>
+          </div>
         </div>
       )}
     </div>

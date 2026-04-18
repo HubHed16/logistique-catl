@@ -48,3 +48,12 @@ next-env.d.ts
 /test-results/
 /playwright-report/
 /playwright/.cache/
+
+# package manager (le projet utilise yarn — on ne commite pas le lockfile npm)
+package-lock.json
+
+# Claude Code preview local (launch.json, etc.)
+/.claude/
+
+# types générés par next typegen (régénérés au build)
+/.next-routes-types/
