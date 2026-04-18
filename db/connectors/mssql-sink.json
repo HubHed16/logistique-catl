@@ -1,20 +1,19 @@
 {
   "name": "wms-mssql-sink",
   "config": {
-    "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+    "connector.class": "io.debezium.connector.jdbc.JdbcSinkConnector",
     "tasks.max": "1",
 
     "connection.url": "jdbc:sqlserver://sqlserver:1433;databaseName=wms;encrypt=false;trustServerCertificate=true",
-    "connection.user": "sa",
+    "connection.username": "sa",
     "connection.password": "Wms_Password1!",
 
     "topics.regex": "wms\\.public\\..+",
-    "auto.create": "true",
-    "auto.evolve": "true",
+    "schema.evolution": "basic",
+    "quote.identifiers": "false",
 
     "insert.mode": "upsert",
-    "pk.mode": "record_key",
-    "pk.fields": "id",
+    "primary.key.mode": "record_key",
     "delete.enabled": "true",
 
     "key.converter": "org.apache.kafka.connect.json.JsonConverter",

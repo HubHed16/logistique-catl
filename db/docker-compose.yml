@@ -90,9 +90,9 @@ services:
       retries: 15
       start_period: 30s
 
-  # ─── Kafka Connect (Debezium PostgreSQL source + SQL Server sink) ───────────
+  # ─── Kafka Connect (Debezium PostgreSQL source + SQL Server sink) ────────
   connect:
-    build: ./connect
+    image: quay.io/debezium/connect:2.7
     container_name: kafka-connect
     networks: [wms-net]
     depends_on:
