@@ -58,7 +58,7 @@ export default function HomePage() {
           </Link>
 
           <a
-            href="/simulator/"
+            href="/simulator/index.html"
             target="_blank"
             rel="noopener noreferrer"
             className="catl-card hover:shadow-md transition-shadow block"
