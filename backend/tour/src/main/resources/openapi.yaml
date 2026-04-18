@@ -42,6 +42,22 @@ tags:
 # ─────────────────────────────────────────────────────────────
 paths:
 
+  # ── Producers ─────────────────────────────────────────────
+  /producers:
+    get:
+      tags: [Producer]
+      summary: List producers
+      operationId: listProducers
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Page of producers
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProducerPage' }
+
   # ── Infrastructure ────────────────────────────────────────
   /producers/{producerId}/infrastructure:
     parameters:
@@ -738,6 +754,26 @@ components:
   # ── Schemas ───────────────────────────────────────────────
   schemas:
 
+    Producer:
+      type: object
+      required: [id, name]
+      properties:
+        id:          { type: string, format: uuid, readOnly: true }
+        name:        { type: string }
+        contact:     { type: string, nullable: true }
+        address:     { type: string, nullable: true }
+        province:    { type: string, nullable: true }
+        isBio:       { type: boolean, default: false }
+
+    ProducerPage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Producer' }
+
     Error:
       type: object
       required: [code, message]
@@ -1023,34 +1059,41 @@ components:
     # ── Product ───────────────────────────────────────────
     Product:
       type: object
-      required: [id, name]
+      required: [id, name, unit, producerId]
       properties:
-        id:         { type: string, format: uuid, readOnly: true }
-        producerId: { type: string, format: uuid, readOnly: true }
-        name:       { type: string }
-        category:   { $ref: '#/components/schemas/ProductCategory' }
-        unit:       { type: string, nullable: true, example: kg }
-        unitPrice:  { type: number, format: double, nullable: true }
-        createdAt:  { type: string, format: date-time, readOnly: true }
-        updatedAt:  { type: string, format: date-time, readOnly: true }
+        id:            { type: string, format: uuid, readOnly: true }
+        name:          { type: string }
+        category:      { type: string, nullable: true }
+        ean:           { type: string, nullable: true }
+        unit:          { type: string }
+        storageType:   { type: string, nullable: true }
+        isBio:         { type: boolean, default: false }
+        certification: { type: string, nullable: true }
+        producerId:    { type: string, format: uuid, readOnly: true }
 
     ProductCreate:
       type: object
-      required: [producerId, name]
+      required: [producerId, name, unit]
       properties:
-        producerId: { type: string, format: uuid }
-        name:       { type: string }
-        category:   { $ref: '#/components/schemas/ProductCategory' }
-        unit:       { type: string }
-        unitPrice:  { type: number, format: double }
+        producerId:    { type: string, format: uuid }
+        name:          { type: string }
+        category:      { type: string, nullable: true }
+        ean:           { type: string, nullable: true }
+        unit:          { type: string }
+        storageType:   { type: string, nullable: true }
+        isBio:         { type: boolean, default: false }
+        certification: { type: string, nullable: true }
 
     ProductUpdate:
       type: object
       properties:
-        name:      { type: string }
-        category:  { $ref: '#/components/schemas/ProductCategory' }
-        unit:      { type: string }
-        unitPrice: { type: number, format: double }
+        name:          { type: string }
+        category:      { type: string, nullable: true }
+        ean:           { type: string, nullable: true }
+        unit:          { type: string }
+        storageType:   { type: string, nullable: true }
+        isBio:         { type: boolean, default: false }
+        certification: { type: string, nullable: true }
 
     ProductPage:
       allOf:

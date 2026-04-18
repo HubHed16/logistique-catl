@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: 010-drop-product-fk
+      author: ai-assistant
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: stop_item
+            constraintName: fk_stop_item_product
+
+  - changeSet:
+      id: 011-drop-product-table
+      author: ai-assistant
+      changes:
+        - dropTable:
+            tableName: product
+            cascadeConstraints: true
+

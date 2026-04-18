@@ -32,6 +32,7 @@ public class ProducerController {
 
         var pageRequest = PageRequest.of(page, size);
         Page<ProducerDto> producer = producerService.getAllProducer(pageRequest);
+
         if (producer.isEmpty()) {
             return ResponseEntity.noContent().build();
         }

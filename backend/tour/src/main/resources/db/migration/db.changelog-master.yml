@@ -3,3 +3,5 @@ databaseChangeLog:
       file: db/migration/changelogs/0001-initial-schema.yml
   - include:
       file: db/migration/changelogs/0002-depot-coords.yml
+  - include:
+      file: db/migration/changelogs/0003-remove-product.yml

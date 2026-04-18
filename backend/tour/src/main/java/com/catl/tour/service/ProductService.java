@@ -4,57 +4,73 @@ import com.catl.tour.api.model.Product;
 import com.catl.tour.api.model.ProductCreate;
 import com.catl.tour.api.model.ProductPage;
 import com.catl.tour.api.model.ProductUpdate;
-import com.catl.tour.exception.NotFoundException;
+import com.catl.tour.client.WmsClient;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class ProductService {
 
-    private final ProductRepository repository;
+    private final WmsClient wmsClient;
 
-    ProductService(ProductRepository repository) {
-        this.repository = repository;
+    ProductService(WmsClient wmsClient) {
+        this.wmsClient = wmsClient;
     }
 
-    @Transactional(readOnly = true)
     public ProductPage list(UUID producerId, int limit, int offset) {
-        long total = repository.countByProducer(producerId);
-        ProductPage page = new ProductPage((int) total, limit, offset);
-        page.setItems(repository.findByProducer(producerId, limit, offset));
+        int pageNumber = offset / limit;
+        List<WmsClient.ProductDto> wmsProducts = wmsClient.getProducts(pageNumber, limit);
+
+        if (wmsProducts == null || wmsProducts.isEmpty()) {
+            return new ProductPage(0, limit, offset);
+        }
+
+        List<Product> products = wmsProducts.stream()
+                .filter(p -> producerId == null || producerId.equals(p.producer_id()))
+                .map(this::mapToProduct)
+                .collect(Collectors.toList());
+
+        ProductPage page = new ProductPage(products.size(), limit, offset);
+        page.setItems(products);
         return page;
     }
 
-    @Transactional(readOnly = true)
     public Product get(UUID id) {
-        return repository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Product", id));
+        if (id == null) throw new IllegalArgumentException("id is required");
+        throw new UnsupportedOperationException("Read-only from WMS. Get by ID not fully implemented.");
     }
 
-    @Transactional
     public Product create(ProductCreate input) {
-        UUID id = repository.insert(input);
-        return repository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Product", id));
+        if (input == null) throw new IllegalArgumentException("input is required");
+        throw new UnsupportedOperationException("Products are managed by WMS.");
     }
 
-    @Transactional
     public Product update(UUID id, ProductUpdate input) {
-        int rows = repository.update(id, input);
-        if (rows == 0) {
-            throw new NotFoundException("Product", id);
-        }
-        return repository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Product", id));
+        if (id == null || input == null) throw new IllegalArgumentException("id and input are required");
+        throw new UnsupportedOperationException("Products are managed by WMS.");
     }
 
-    @Transactional
     public void delete(UUID id) {
-        int rows = repository.softDelete(id);
-        if (rows == 0) {
-            throw new NotFoundException("Product", id);
+        if (id == null) throw new IllegalArgumentException("id is required");
+        throw new UnsupportedOperationException("Products are managed by WMS.");
+    }
+
+    private Product mapToProduct(WmsClient.ProductDto dto) {
+        Product p = new Product();
+        p.setId(dto.id());
+        p.setProducerId(dto.producer_id());
+        p.setName(dto.name());
+        if (dto.category() != null) {
+            p.setCategory(dto.category());
         }
+        p.setUnit(dto.unit());
+        p.setEan(dto.ean());
+        p.setStorageType(dto.storage_type());
+        p.setIsBio(dto.is_bio() != null ? dto.is_bio() : false);
+        p.setCertification(dto.certification());
+        return p;
     }
 }
