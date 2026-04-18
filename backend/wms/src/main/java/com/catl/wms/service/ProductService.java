@@ -17,32 +17,51 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class ProductService {
-    
+
     private final ProductRepository productRepository;
     private final ProductMapper productMapper;
-
     private final ProducerRepository producerRepository;
-    
+
     public Page<ProductDto> getAllProduct(PageRequest pageRequest) {
         return productRepository.findAll(pageRequest).map(productMapper::getDto);
     }
-    
+
     public Optional<ProductDto> getProductById(UUID id) {
         return productRepository.findById(id).map(productMapper::getDto);
     }
 
-    public ProductDto saveOrUpdateProduct(UUID productId, ProductDto productDto) {
-        Product productDao;
-        if (productId == null) {
-            productDao = new Product();
-        } else {
-            productDao = productRepository.findById(productId)
-                    .orElseThrow(() -> new RuntimeException("Product not found with id: " + productId));
-        }
+    public ProductDto createProduct(ProductDto productDto) {
+        Producer producer = producerRepository.findById(productDto.producerId())
+                .orElseThrow(() -> new RuntimeException("Producer not found with id: " + productDto.producerId()));
+
+        Product productDao = new Product();
+        mapProduct(productDao, productDto, producer);
+
+        Product savedProduct = productRepository.save(productDao);
+        return productMapper.getDto(savedProduct);
+    }
+
+    public ProductDto updateProduct(UUID productId, ProductDto productDto) {
+        Product productDao = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found with id: " + productId));
 
         Producer producer = producerRepository.findById(productDto.producerId())
                 .orElseThrow(() -> new RuntimeException("Producer not found with id: " + productDto.producerId()));
 
+        mapProduct(productDao, productDto, producer);
+
+        Product savedProduct = productRepository.save(productDao);
+        return productMapper.getDto(savedProduct);
+    }
+
+    public void deleteProduct(UUID productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found with id: " + productId));
+
+        productRepository.delete(product);
+    }
+
+    private void mapProduct(Product productDao, ProductDto productDto, Producer producer) {
         productDao.setName(productDto.name());
         productDao.setCategory(productDto.category());
         productDao.setEan(productDto.ean());
@@ -51,14 +70,5 @@ public class ProductService {
         productDao.setBio(productDto.bio());
         productDao.setCertification(productDto.certification());
         productDao.setProducer(producer);
-
-        Product savedProduct = productRepository.save(productDao);
-        return productMapper.getDto(savedProduct);
-    }
-
-    public void deleteProduct(UUID productId) {
-        var product = productRepository.findById(productId)
-                .orElseThrow(() -> new RuntimeException("Product not found with id: " + productId));
-        productRepository.delete(product);
     }
 }

@@ -9,6 +9,7 @@ import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -47,14 +48,21 @@ public class ProductController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    @PatchMapping("/{id}")
-    @Operation(summary = "Partially update a product")
-    public ResponseEntity<ProductDto> patchProduct(
-            @PathVariable("id") UUID productId,
+    @PostMapping
+    @Operation(summary = "Create a new product")
+    public ResponseEntity<ProductDto> createProduct(@RequestBody ProductDto productDto) {
+        ProductDto created = productService.createProduct(productDto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "Update a product")
+    public ResponseEntity<ProductDto> updateProduct(
+            @PathVariable UUID id,
             @RequestBody ProductDto productDto) {
 
-        ProductDto result = productService.saveOrUpdateProduct(productId, productDto);
-        return ResponseEntity.ok(result);
+        ProductDto updated = productService.updateProduct(id, productDto);
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
