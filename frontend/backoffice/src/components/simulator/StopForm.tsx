@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { MapPin, Package } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { AddressAutocomplete } from "@/components/simulator/AddressAutocomplete";
@@ -14,6 +14,7 @@ import {
   ApiError,
   useCreateStop,
   useCustomers,
+  useStopItems,
   useUpdateStop,
 } from "@/lib/simulator/api-hooks";
 import {
@@ -94,6 +95,49 @@ export function StopForm({
     formState: { errors, isSubmitting },
   } = form;
 
+  // Le montant de l'arrêt est dérivé des lignes produits : somme des
+  // quantité × prix unitaire. Les lignes sans prix comptent pour 0.
+  const { data: stopItems } = useStopItems(stop?.id ?? null);
+  const computedAmount = useMemo(
+    () =>
+      (stopItems ?? []).reduce(
+        (sum, it) => sum + it.quantity * (it.unitPrice ?? 0),
+        0,
+      ),
+    [stopItems],
+  );
+
+  // Synchronise le champ `amountEur` du formulaire avec le total calculé et
+  // persiste en arrière-plan dès qu'il diverge de la valeur stockée. Le ref
+  // évite les re-déclenchements pendant que la mutation est en vol ; on
+  // attend que `stopItems` soit défini pour ne pas écraser un montant
+  // existant avec 0 pendant le chargement.
+  const lastPersistedRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!isEdit || !stop || !stopItems) return;
+    setValue("amountEur", computedAmount, { shouldDirty: false });
+    if (
+      computedAmount !== (stop.amountEur ?? 0) &&
+      lastPersistedRef.current !== computedAmount
+    ) {
+      lastPersistedRef.current = computedAmount;
+      const base = {
+        operation: stop.operation as StopOperation,
+        amountEur: computedAmount,
+        durationMin: stop.durationMin ?? 15,
+      };
+      const payload: StopUpdate = stop.customerId
+        ? { ...base, customerId: stop.customerId }
+        : {
+            ...base,
+            address: stop.address ?? undefined,
+            latitude: stop.latitude ?? undefined,
+            longitude: stop.longitude ?? undefined,
+          };
+      updateStop.mutate(payload);
+    }
+  }, [computedAmount, isEdit, stop, stopItems, setValue, updateStop]);
+
   const switchMode = (next: "customer" | "address") => {
     setMode(next);
     setValue("mode", next);
@@ -115,7 +159,7 @@ export function StopForm({
   const onSubmit = handleSubmit(async (values) => {
     const base = {
       operation: values.operation as StopOperation,
-      amountEur: values.amountEur,
+      amountEur: isEdit ? computedAmount : values.amountEur,
       durationMin: values.durationMin,
     };
     const payload =
@@ -258,12 +302,21 @@ export function StopForm({
         {/* Opération cachée : seule la livraison est gérée côté produit. */}
         <input type="hidden" {...register("operation")} />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-          <Field label="Montant (€)" error={errors.amountEur?.message}>
+          <Field
+            label="Montant (€)"
+            error={errors.amountEur?.message}
+            hint={
+              isEdit
+                ? "Calculé automatiquement depuis les lignes produits."
+                : "Disponible après la première sauvegarde de l'arrêt."
+            }
+          >
             <Input
               type="number"
               step="0.01"
               min="0"
               invalid={!!errors.amountEur}
+              disabled={isEdit}
               {...register("amountEur")}
             />
           </Field>

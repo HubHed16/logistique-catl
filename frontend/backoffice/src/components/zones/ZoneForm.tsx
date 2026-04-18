@@ -27,7 +27,7 @@ export function ZoneForm({ initialZone }: ZoneFormProps) {
   const router = useRouter();
   const isEdit = !!initialZone;
 
-  const defaultType = initialZone?.type ?? "fresh";
+  const defaultType = initialZone?.type ?? "COLD";
   const typeDefaults = DEFAULTS_BY_TYPE[defaultType];
 
   const {

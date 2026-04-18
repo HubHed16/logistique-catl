@@ -65,7 +65,7 @@ const routes: Route[] = [
     pattern: /^\/api\/storage-zones\/?$/,
     handler: (_m, body) => {
       const z = body as Omit<StorageZone, "id" | "locationsCount">;
-      const created: StorageZone = { ...z, id: uid() };
+      const created: StorageZone = { ...z, id: uid(), locationsCount: 0 };
       mockStore.setData((d) => {
         d.zones.push(created);
       });
@@ -210,7 +210,7 @@ const routes: Route[] = [
       const zoneIds = new Set(matchingZones.map((z) => z.id));
       const occupied = new Set(
         data.stockItems
-          .filter((si) => si.status === "available")
+          .filter((si) => si.status === "AVAILABLE")
           .map((si) => si.locationId),
       );
       const available = data.locations.filter(
@@ -289,7 +289,7 @@ const routes: Route[] = [
       if (!req.qualityOk) {
         const response: ReceptionResponse = {
           stockItemId: uid(),
-          status: "blocked",
+          status: "BLOCKED",
           location: null,
         };
         return { status: 201, body: response };
@@ -308,7 +308,7 @@ const routes: Route[] = [
         receptionDate: isoToday(),
         expirationDate: req.expirationDate ?? null,
         bestBefore: req.bestBefore ?? null,
-        status: "available",
+        status: "AVAILABLE",
         statusReason: null,
         receptionTemp: req.receptionTemp ?? null,
       };

@@ -1,21 +1,21 @@
 import { z } from "zod";
 import type { StorageZoneType } from "./types";
 
-const ZONE_TYPES = ["ambient", "fresh", "negative"] as const;
+const ZONE_TYPES = ["DRY", "COLD", "FROZEN"] as const;
 
 /**
  * Valeurs par défaut de T° (°C) par type de zone :
- *   - ambient  : ambiant / sec (10–25)
- *   - fresh    : réfrigéré 0–7
- *   - negative : congelé ≤ -18
+ *   - DRY    : ambiant / sec (10–25)
+ *   - COLD   : réfrigéré 0–7
+ *   - FROZEN : congelé ≤ -18
  */
 export const DEFAULTS_BY_TYPE: Record<
   StorageZoneType,
   { targetTemp: number; tempMin: number; tempMax: number }
 > = {
-  ambient: { targetTemp: 18, tempMin: 10, tempMax: 25 },
-  fresh: { targetTemp: 4, tempMin: 0, tempMax: 7 },
-  negative: { targetTemp: -20, tempMin: -25, tempMax: -18 },
+  DRY: { targetTemp: 18, tempMin: 10, tempMax: 25 },
+  COLD: { targetTemp: 4, tempMin: 0, tempMax: 7 },
+  FROZEN: { targetTemp: -20, tempMin: -25, tempMax: -18 },
 };
 
 export const zoneFormSchema = z
@@ -170,11 +170,13 @@ export const receptionSchema = z
         message: "Motif requis si le contrôle est KO",
       });
     }
-    if (data.qualityOk && !data.locationId) {
+    if (!data.locationId) {
+      // location_id est NOT NULL côté SQL — on exige un emplacement même en
+      // cas de rejet qualité (à défaut d'une zone de quarantaine dédiée).
       ctx.addIssue({
         code: "custom",
         path: ["locationId"],
-        message: "Emplacement requis (contrôle OK)",
+        message: "Emplacement requis (même en cas de rejet qualité)",
       });
     }
   });

@@ -1,7 +1,6 @@
 import { dispatchMock } from "./mock/handlers";
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
 
 const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === "true";
 

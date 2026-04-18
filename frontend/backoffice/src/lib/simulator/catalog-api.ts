@@ -23,9 +23,9 @@ type WmsProductDto = {
 };
 
 const ZONE_TYPE_SET: ReadonlySet<StorageZoneType> = new Set<StorageZoneType>([
-  "ambient",
-  "fresh",
-  "negative",
+  "DRY",
+  "COLD",
+  "FROZEN",
 ]);
 
 function toStorageZone(raw: string | null): StorageZoneType | null {
