@@ -64,6 +64,7 @@ export interface StorageZone {
   targetTemp: number;
   tempMin: number;
   tempMax: number;
+  areaM2: number;
   locationsCount?: number;
 }
 

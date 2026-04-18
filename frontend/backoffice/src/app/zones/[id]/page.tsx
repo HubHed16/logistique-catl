@@ -62,7 +62,7 @@ export default function ZoneDetailPage({ params }: PageProps) {
           {zone.name}
         </CardTitle>
 
-        <dl className="grid grid-cols-2 md:grid-cols-4 gap-5">
+        <dl className="grid grid-cols-2 md:grid-cols-5 gap-5">
           <Stat label="Type">
             <ZoneTypeBadge type={zone.type} />
             <div className="text-xs text-catl-text mt-1">
@@ -77,6 +77,11 @@ export default function ZoneDetailPage({ params }: PageProps) {
           <Stat label="Plage (°C)">
             <span className="font-mono text-catl-primary">
               {zone.tempMin.toFixed(1)} → {zone.tempMax.toFixed(1)}
+            </span>
+          </Stat>
+          <Stat label="Surface (m²)">
+            <span className="font-mono text-lg text-catl-primary">
+              {zone.areaM2.toFixed(1)}
             </span>
           </Stat>
           <Stat label="Emplacements">

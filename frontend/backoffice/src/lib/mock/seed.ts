@@ -20,14 +20,16 @@ export function buildSeed(): MockData {
     targetTemp: 4,
     tempMin: 0,
     tempMax: 7,
+    areaM2: 120,
   };
   const sec: StorageZone = {
     id: uid(),
     name: "Sec",
     type: "dry",
-    targetTemp: 15,
+    targetTemp: 18,
     tempMin: 10,
-    tempMax: 20,
+    tempMax: 25,
+    areaM2: 200,
   };
   const congelation: StorageZone = {
     id: uid(),
@@ -36,6 +38,7 @@ export function buildSeed(): MockData {
     targetTemp: -20,
     tempMin: -25,
     tempMax: -18,
+    areaM2: 60,
   };
 
   const locations: StorageLocation[] = [
