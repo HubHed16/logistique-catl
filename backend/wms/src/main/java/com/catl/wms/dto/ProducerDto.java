@@ -1,12 +1,13 @@
 package com.catl.wms.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.annotation.Nullable;
 
 import java.util.Optional;
 import java.util.UUID;
 
 public record ProducerDto(
-        @JsonProperty("id") Optional<UUID> id,
+        @Nullable @JsonProperty("id") UUID id,
         @JsonProperty("name") String name,
         @JsonProperty("contact") String contact,
         @JsonProperty("address") String address,

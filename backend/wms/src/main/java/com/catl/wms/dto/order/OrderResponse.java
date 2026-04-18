@@ -15,8 +15,6 @@ public class OrderResponse {
     private UUID id;
     private UUID cooperativeId;
     private String clientName;
-    private Order.ClientType clientType;
-    private Order.OrderChannel channel;
     private Order.OrderStatus status;
     private LocalDateTime createdAt;
     private LocalDateTime shippedAt;
@@ -27,9 +25,6 @@ public class OrderResponse {
         return OrderResponse.builder()
                 .id(order.getId())
                 .cooperativeId(order.getCooperative() != null ? order.getCooperative().getId() : null)
-                .clientName(order.getClientName())
-                .clientType(order.getClientType())
-                .channel(order.getChannel())
                 .status(order.getStatus())
                 .createdAt(order.getCreatedAt())
                 .shippedAt(order.getShippedAt())

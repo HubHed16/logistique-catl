@@ -1,8 +1,8 @@
 package com.catl.wms.service;
 
-import com.catl.wms.dao.ProducerDao;
-import com.catl.wms.dao.ProductDao;
 import com.catl.wms.dto.ProductDto;
+import com.catl.wms.model.Producer;
+import com.catl.wms.model.Product;
 import com.catl.wms.repository.ProducerRepository;
 import com.catl.wms.repository.ProductRepository;
 import com.catl.wms.service.mapper.ProductMapper;
@@ -32,15 +32,15 @@ public class ProductService {
     }
 
     public ProductDto saveOrUpdateProduct(UUID productId, ProductDto productDto) {
-        ProductDao productDao;
+        Product productDao;
         if (productId == null) {
-            productDao = new ProductDao();
+            productDao = new Product();
         } else {
             productDao = productRepository.findById(productId)
                     .orElseThrow(() -> new RuntimeException("Product not found with id: " + productId));
         }
 
-        ProducerDao producer = producerRepository.findById(productDto.producerId())
+        Producer producer = producerRepository.findById(productDto.producerId())
                 .orElseThrow(() -> new RuntimeException("Producer not found with id: " + productDto.producerId()));
 
         productDao.setName(productDto.name());
@@ -52,7 +52,7 @@ public class ProductService {
         productDao.setCertification(productDto.certification());
         productDao.setProducer(producer);
 
-        ProductDao savedProduct = productRepository.save(productDao);
+        Product savedProduct = productRepository.save(productDao);
         return productMapper.getDto(savedProduct);
     }
 

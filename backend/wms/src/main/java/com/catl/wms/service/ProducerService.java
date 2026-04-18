@@ -1,7 +1,7 @@
 package com.catl.wms.service;
 
-import com.catl.wms.dao.ProducerDao;
 import com.catl.wms.dto.ProducerDto;
+import com.catl.wms.model.Producer;
 import com.catl.wms.repository.ProducerRepository;
 import com.catl.wms.service.mapper.ProducerMapper;
 import lombok.RequiredArgsConstructor;
@@ -29,9 +29,9 @@ public class ProducerService {
 
 
     public ProducerDto saveOrUpdateProducer(UUID producerId, ProducerDto producerDto) {
-           ProducerDao producerDao;
+           Producer producerDao;
            if (producerId == null) {
-               producerDao = new ProducerDao();
+               producerDao = new Producer();
            } else {
                producerDao = producerRepository.findById(producerId)
                    .orElseThrow(() -> new RuntimeException("Producer not found with id: " + producerId));
