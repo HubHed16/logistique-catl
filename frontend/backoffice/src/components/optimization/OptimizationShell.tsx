@@ -23,6 +23,7 @@ import type {
   OptimizationResult,
   OptimizationStopAssignment,
 } from "@/lib/simulator/types";
+import { OptimizationMap } from "@/components/optimization/OptimizationMap";
 
 const TODAY = new Date().toISOString().slice(0, 10);
 
@@ -228,6 +229,21 @@ function ResultView({ result }: { result: OptimizationResult }) {
             {usedHubs.map((hub) => (
               <HubCard key={hub.hubId} hub={hub} />
             ))}
+          </div>
+        </section>
+      )}
+
+      {activeTransfers.length > 0 && (
+        <section className="catl-section catl-section--primary">
+          <span className="catl-section-pill">
+            <Truck className="w-3 h-3" /> Carte des flux
+          </span>
+          <div className="mt-1">
+            <OptimizationMap
+              hubs={usedHubs}
+              transfers={activeTransfers}
+              assignments={result.assignments}
+            />
           </div>
         </section>
       )}

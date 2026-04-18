@@ -218,14 +218,14 @@ public class DailyRoutingOptimizer {
                 assignments.add(new StopAssignment(
                         s.stopId(), s.routeId(), s.producerId(), s.sequence(),
                         StopAssignment.Mode.DIRECT, null, s.volume(),
-                        directCost[i], Double.NaN
+                        directCost[i], Double.NaN, s.latitude(), s.longitude()
                 ));
             } else {
                 HubCandidate h = hubs.get(chosen);
                 assignments.add(new StopAssignment(
                         s.stopId(), s.routeId(), s.producerId(), s.sequence(),
                         StopAssignment.Mode.VIA_HUB, h.infrastructureId(), s.volume(),
-                        directCost[i], lastMileCost[i][chosen]
+                        directCost[i], lastMileCost[i][chosen], s.latitude(), s.longitude()
                 ));
             }
         }
@@ -314,7 +314,7 @@ public class DailyRoutingOptimizer {
             assignments.add(new StopAssignment(
                     s.stopId(), s.routeId(), s.producerId(), s.sequence(),
                     StopAssignment.Mode.DIRECT, null, s.volume(),
-                    c, Double.NaN
+                    c, Double.NaN, s.latitude(), s.longitude()
             ));
         }
         long elapsedMs = (System.nanoTime() - startNanos) / 1_000_000L;

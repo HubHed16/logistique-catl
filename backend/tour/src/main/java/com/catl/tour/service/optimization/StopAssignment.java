@@ -11,7 +11,9 @@ public record StopAssignment(
         UUID hubId,
         double volume,
         double directCostEur,
-        double viaHubCostEur
+        double viaHubCostEur,
+        double latitude,
+        double longitude
 ) {
     public enum Mode { DIRECT, VIA_HUB }
 }

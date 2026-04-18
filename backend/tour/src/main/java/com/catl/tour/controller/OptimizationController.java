@@ -62,6 +62,8 @@ public class OptimizationController implements OptimizationApi {
                 a.volume(),
                 a.directCostEur()
         );
+        dto.latitude(a.latitude());
+        dto.longitude(a.longitude());
         dto.setHubId(a.hubId());
         if (!Double.isNaN(a.viaHubCostEur())) {
             dto.setViaHubCostEur(a.viaHubCostEur());

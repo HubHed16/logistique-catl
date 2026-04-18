@@ -6,7 +6,7 @@ services:
     container_name: wms-api
     networks: [wms-net]
     ports:
-      - "8080:8080"
+      - "8081:8080"
     environment:
       DB_HOST: postgres
       DB_PORT: 5432
@@ -17,4 +17,4 @@ services:
 
 networks:
   wms-net:
-    external: true
+    driver: bridge

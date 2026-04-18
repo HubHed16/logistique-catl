@@ -1,0 +1,5 @@
+include:
+  - ./db/docker-compose.yml
+  - ./backend/wms/docker-compose.yml
+  - ./backend/tour/docker-compose.yml
+
