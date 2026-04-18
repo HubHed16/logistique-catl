@@ -1,0 +1,51 @@
+version: '3.8'
+
+networks:
+  wms-net:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  sqlserver-data:
+  kafka-data:
+  zookeeper-data:
+
+services:
+  # ─── PostgreSQL (source) ──────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    networks: [wms-net]
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: wms
+      POSTGRES_USER: wms_user
+      POSTGRES_PASSWORD: wms_password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wms_user -d wms"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ─── SQL Server (destination) ───────────────────────────────────────────────
+  sqlserver:
+    build: ./mssql
+    container_name: sqlserver
+    networks: [wms-net]
+    ports:
+      - "1433:1433"
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Wms_Password1!"
+      MSSQL_PID: "Developer"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'Wms_Password1!' -Q 'SELECT 1' -b -No > /dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
