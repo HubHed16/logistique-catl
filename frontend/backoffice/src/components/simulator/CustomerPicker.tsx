@@ -243,7 +243,19 @@ function NewCustomerInlineForm({
   });
 
   return (
-    <form onSubmit={onSubmit} noValidate className="mt-2">
+    <div
+      className="mt-2"
+      onKeyDown={(e) => {
+        if (
+          e.key === "Enter" &&
+          !(e.target instanceof HTMLTextAreaElement)
+        ) {
+          e.preventDefault();
+          e.stopPropagation();
+          void onSubmit();
+        }
+      }}
+    >
       <div className="catl-section catl-section--info">
         <span className="catl-section-pill">
           <Plus className="w-3 h-3" /> Nouveau client
@@ -317,11 +329,16 @@ function NewCustomerInlineForm({
           >
             Annuler
           </Button>
-          <Button type="submit" size="md" loading={isSubmitting}>
+          <Button
+            type="button"
+            size="md"
+            loading={isSubmitting}
+            onClick={() => void onSubmit()}
+          >
             Créer le client
           </Button>
         </div>
       </div>
-    </form>
+    </div>
   );
 }
