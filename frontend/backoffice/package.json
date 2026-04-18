@@ -9,7 +9,8 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "apigen": "openapi-typescript src/lib/apigen/openapi.yaml -o src/lib/apigen/types.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -19,6 +20,7 @@
     "leaflet": "^1.9.4",
     "lucide-react": "^1.8.0",
     "next": "16.2.4",
+    "openapi-fetch": "^0.17.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-hook-form": "^7.72.1",
@@ -35,6 +37,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
+    "openapi-typescript": "^7.13.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
