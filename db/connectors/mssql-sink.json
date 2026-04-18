@@ -1,0 +1,31 @@
+{
+  "name": "wms-mssql-sink",
+  "config": {
+    "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+    "tasks.max": "1",
+
+    "connection.url": "jdbc:sqlserver://sqlserver:1433;databaseName=wms;encrypt=false;trustServerCertificate=true",
+    "connection.user": "sa",
+    "connection.password": "Wms_Password1!",
+
+    "topics.regex": "wms\\.public\\..+",
+    "auto.create": "true",
+    "auto.evolve": "true",
+
+    "insert.mode": "upsert",
+    "pk.mode": "record_key",
+    "pk.fields": "id",
+    "delete.enabled": "true",
+
+    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "key.converter.schemas.enable": "true",
+    "value.converter.schemas.enable": "true",
+
+    "transforms": "unwrap",
+    "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+    "transforms.unwrap.drop.tombstones": "false",
+    "transforms.unwrap.delete.handling.mode": "tombstone",
+    "transforms.unwrap.add.fields": "op,table,source.ts_ms"
+  }
+}

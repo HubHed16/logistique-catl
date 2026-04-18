@@ -37,7 +37,7 @@ register() {
 }
 
 register "${CONNECTORS_DIR}/postgres-source.json"
-register "${CONNECTORS_DIR}/clickhouse-sink.json"
+register "${CONNECTORS_DIR}/mssql-sink.json"
 
 echo ""
 echo "==> Connecteurs actifs :"
