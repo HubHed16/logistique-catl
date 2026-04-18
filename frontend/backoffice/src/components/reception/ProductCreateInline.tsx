@@ -45,7 +45,7 @@ export function ProductCreateInline({ prefillEan, onCancel, onCreated }: Props) 
       name: "",
       category: "",
       unit: "kg",
-      storageType: "fresh",
+      storageType: "COLD",
       producerId: "",
       isBio: false,
       certification: null,

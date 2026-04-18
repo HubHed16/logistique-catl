@@ -1,9 +1,9 @@
 // Types alignés sur le schéma SQL — source de vérité :
 // backend/wms/src/main/resources/db/migration/V1.0__init_database.sql
 
-export type StorageZoneType = "ambient" | "fresh" | "negative";
+export type StorageZoneType = "DRY" | "COLD" | "FROZEN";
 
-export type StockItemStatus = "available" | "reserved" | "blocked";
+export type StockItemStatus = "AVAILABLE" | "RESERVED" | "BLOCKED" | "CONSUMED";
 
 /**
  * Côté SQL `unit` est un VARCHAR libre. On fige une petite liste côté UI
@@ -19,12 +19,12 @@ export type StockItemUnit =
   | "box";
 
 export type OrderStatus =
-  | "draft"
-  | "confirmed"
-  | "preparing"
-  | "shipped"
-  | "delivered"
-  | "cancelled";
+  | "PENDING"
+  | "CONFIRMED"
+  | "PREPARING"
+  | "SHIPPED"
+  | "DELIVERED"
+  | "CANCELLED";
 
 /**
  * Pas de table `action_log` côté SQL pour l'instant — ces valeurs vivent
@@ -56,7 +56,7 @@ export interface StorageZone {
   targetTemp: number | null;
   tempMin: number | null;
   tempMax: number | null;
-  locationsCount?: number;
+  locationsCount: number;
 }
 
 export interface StorageLocation {

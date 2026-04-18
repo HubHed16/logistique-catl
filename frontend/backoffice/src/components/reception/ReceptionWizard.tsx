@@ -18,6 +18,7 @@ import { ScanInput } from "@/components/ui/ScanInput";
 import { WizardStepper } from "@/components/ui/WizardStepper";
 import { zoneTypeLabel } from "@/components/ui/ZoneTypeBadge";
 import { ApiError } from "@/lib/api";
+import { useDefaultCooperative } from "@/lib/hooks/cooperatives";
 import { useProductByEan } from "@/lib/hooks/products";
 import {
   useAvailableLocations,
@@ -97,7 +98,8 @@ export function ReceptionWizard() {
 
   const qualityOk = useWatch({ control, name: "qualityOk" });
 
-  const receptionMutation = useReception();
+  const defaultCooperative = useDefaultCooperative();
+  const receptionMutation = useReception(defaultCooperative.data?.id);
 
   function applyProduct(product: Product) {
     setIdentifiedProduct(product);
@@ -116,15 +118,15 @@ export function ReceptionWizard() {
     // ambiant/négatif = DDM longue. Reste modifiable par l'utilisateur.
     const today = new Date();
     const daysByType: Record<string, number> = {
-      fresh: 7,
-      ambient: 180,
-      negative: 365,
+      COLD: 7,
+      DRY: 180,
+      FROZEN: 365,
     };
-    const days = daysByType[product.storageType ?? "ambient"] ?? 180;
+    const days = daysByType[product.storageType ?? "DRY"] ?? 180;
     const future = new Date(today);
     future.setDate(future.getDate() + days);
     const iso = future.toISOString().slice(0, 10);
-    if (product.storageType === "fresh") {
+    if (product.storageType === "COLD") {
       setValue("expirationDate", iso, { shouldValidate: false });
       setValue("bestBefore", "", { shouldValidate: false });
     } else {
@@ -145,19 +147,12 @@ export function ReceptionWizard() {
   async function goNext() {
     const ok = await validateStep(step);
     if (!ok) return;
-    // Si KO en étape qualité (3), on saute l'étape emplacement et on va au récap
-    if (step === 3 && !getValues("qualityOk")) {
-      setStep(5);
-      return;
-    }
+    // stock_item.location_id est NOT NULL en SQL, même pour un rejet → on
+    // ne peut plus court-circuiter l'étape emplacement (zone de quarantaine).
     if (step < 5) setStep((step + 1) as StepIndex);
   }
 
   function goPrev() {
-    if (step === 5 && !getValues("qualityOk")) {
-      setStep(3);
-      return;
-    }
     if (step > 0) setStep((step - 1) as StepIndex);
   }
 
@@ -187,8 +182,8 @@ export function ReceptionWizard() {
       const res = await receptionMutation.mutateAsync(values);
       setResult(res);
       toast.success(
-        res.status === "blocked"
-          ? "Lot rejeté, non stocké."
+        res.status === "BLOCKED"
+          ? "Lot rejeté, stocké en quarantaine."
           : "Réception enregistrée.",
       );
     } catch (err) {
@@ -208,6 +203,18 @@ export function ReceptionWizard() {
 
   if (result) {
     return <SuccessScreen result={result} onNew={resetAll} />;
+  }
+
+  if (defaultCooperative.isError || (defaultCooperative.isSuccess && !defaultCooperative.data)) {
+    return (
+      <Card>
+        <CardTitle>Configuration requise</CardTitle>
+        <p className="text-sm text-catl-text">
+          Aucune coopérative n&apos;est enregistrée. Crée une coopérative via{" "}
+          <code>POST /api/cooperatives</code> avant de réceptionner un lot.
+        </p>
+      </Card>
+    );
   }
 
   return (
@@ -284,7 +291,7 @@ export function ReceptionWizard() {
               <Field
                 label="Température à la réception (°C)"
                 hint={
-                  identifiedProduct?.storageType === "ambient"
+                  identifiedProduct?.storageType === "DRY"
                     ? "Optionnel pour un produit ambiant."
                     : "Fortement recommandé hors ambiant."
                 }
@@ -783,7 +790,7 @@ function SuccessScreen({
   result: ReceptionResponse;
   onNew: () => void;
 }) {
-  const isBlocked = result.status === "blocked";
+  const isBlocked = result.status === "BLOCKED";
   return (
     <Card validated>
       <div className="text-center py-6">
