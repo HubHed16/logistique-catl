@@ -30,19 +30,7 @@ public class ReceptionController {
         ReceptionResponse response = receptionService.receiveOrder(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
-
-    /**
-     * POST /api/receptions/quality-control
-     * QC sur un StockItem déjà réceptionné.
-     */
-    @PostMapping("/quality-control")
-    public ResponseEntity<ReceptionLineResponse> qualityControl(
-            @Valid @RequestBody QualityControlRequest request) {
-
-        ReceptionLineResponse response = receptionService.qualityControl(request);
-        return ResponseEntity.ok(response);
-    }
-
+    
     /**
      * POST /api/receptions/{stockItemId}/scan
      * Scan de confirmation physique avec poids réel.

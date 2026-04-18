@@ -100,48 +100,12 @@ public class ReceptionService {
 
         return ReceptionResponse.builder()
                 .orderId(order.getId())
-                .orderClientName(order.getClientName())
                 .orderStatus(order.getStatus())
                 .receptionDate(request.getReceptionDate())
                 .receptionTemp(request.getReceptionTemp())
                 .totalLines(lineResponses.size())
                 .linesWithDiscrepancy(discrepancyCount)
                 .lines(lineResponses)
-                .build();
-    }
-
-    /**
-     * Quality Control sur un StockItem déjà réceptionné.
-     * - OK  → AVAILABLE
-     * - KO  → QUARANTINE
-     */
-    @Transactional
-    public ReceptionLineResponse qualityControl(QualityControlRequest request) {
-
-        StockItem stockItem = stockItemRepository.findById(request.getStockItemId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "StockItem not found: " + request.getStockItemId()));
-
-        if (request.getPassed()) {
-            stockItem.setStatus(StockItem.StockStatus.AVAILABLE);
-            stockItem.setStatusReason("Quality control passed");
-        } else {
-            if (request.getReason() == null || request.getReason().isBlank()) {
-                throw new IllegalArgumentException("Reason is required when quality control fails");
-            }
-            stockItem.setStatus(StockItem.StockStatus.QUARANTINE);
-            stockItem.setStatusReason(request.getReason());
-        }
-
-        stockItem = stockItemRepository.save(stockItem);
-
-        return ReceptionLineResponse.builder()
-                .stockItemId(stockItem.getId())
-                .productId(stockItem.getProduct().getId())
-                .productName(stockItem.getProduct().getName())
-                .quantityReceived(stockItem.getQuantity())
-                .lotNumber(stockItem.getLotNumber())
-                .status(stockItem.getStatus())
                 .build();
     }
 
