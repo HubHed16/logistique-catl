@@ -60,8 +60,8 @@ export function ZoneList() {
               <Th>Nom</Th>
               <Th>Type</Th>
               <Th align="right">Cible (°C)</Th>
-              <Th align="right">Min</Th>
-              <Th align="right">Max</Th>
+              <Th align="right">Plage</Th>
+              <Th align="right">Surface (m²)</Th>
               <Th align="right"># empl.</Th>
               <Th align="right">Actions</Th>
             </tr>
@@ -87,10 +87,10 @@ export function ZoneList() {
                   {z.targetTemp.toFixed(1)}
                 </Td>
                 <Td align="right" mono>
-                  {z.tempMin.toFixed(1)}
+                  {z.tempMin.toFixed(1)} → {z.tempMax.toFixed(1)}
                 </Td>
                 <Td align="right" mono>
-                  {z.tempMax.toFixed(1)}
+                  {z.areaM2.toFixed(1)}
                 </Td>
                 <Td align="right" mono>
                   {z.locationsCount ?? 0}

@@ -2,7 +2,8 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useEffect, useRef } from "react";
+import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { Card, CardTitle } from "@/components/ui/Card";
@@ -11,6 +12,7 @@ import { ZONE_TYPE_OPTIONS } from "@/components/ui/ZoneTypeBadge";
 import { ApiError } from "@/lib/api";
 import { useCreateZone, useUpdateZone } from "@/lib/hooks/zones";
 import {
+  DEFAULTS_BY_TYPE,
   zoneFormSchema,
   type ZoneFormInput,
   type ZoneFormValues,
@@ -25,9 +27,14 @@ export function ZoneForm({ initialZone }: ZoneFormProps) {
   const router = useRouter();
   const isEdit = !!initialZone;
 
+  const defaultType = initialZone?.type ?? "fresh";
+  const typeDefaults = DEFAULTS_BY_TYPE[defaultType];
+
   const {
+    control,
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting, isValid },
   } = useForm<ZoneFormInput, unknown, ZoneFormValues>({
     resolver: zodResolver(zoneFormSchema),
@@ -39,15 +46,30 @@ export function ZoneForm({ initialZone }: ZoneFormProps) {
           targetTemp: initialZone.targetTemp,
           tempMin: initialZone.tempMin,
           tempMax: initialZone.tempMax,
+          areaM2: initialZone.areaM2,
         }
       : {
           name: "",
-          type: "fresh",
-          targetTemp: 4,
-          tempMin: 0,
-          tempMax: 7,
+          type: defaultType,
+          targetTemp: typeDefaults.targetTemp,
+          tempMin: typeDefaults.tempMin,
+          tempMax: typeDefaults.tempMax,
+          areaM2: 100,
         },
   });
+
+  // Auto-ajuste les températures quand l'utilisateur change le type
+  // (on ne touche rien au montage initial).
+  const watchedType = useWatch({ control, name: "type" });
+  const prevTypeRef = useRef(watchedType);
+  useEffect(() => {
+    if (prevTypeRef.current === watchedType) return;
+    prevTypeRef.current = watchedType;
+    const d = DEFAULTS_BY_TYPE[watchedType];
+    setValue("targetTemp", d.targetTemp, { shouldValidate: true });
+    setValue("tempMin", d.tempMin, { shouldValidate: true });
+    setValue("tempMax", d.tempMax, { shouldValidate: true });
+  }, [watchedType, setValue]);
 
   const create = useCreateZone();
   const update = useUpdateZone(initialZone?.id ?? "");
@@ -91,7 +113,12 @@ export function ZoneForm({ initialZone }: ZoneFormProps) {
             />
           </Field>
 
-          <Field label="Type" required error={errors.type?.message}>
+          <Field
+            label="Type"
+            required
+            hint="Changer le type réajuste les températures par défaut."
+            error={errors.type?.message}
+          >
             <Select invalid={!!errors.type} {...register("type")}>
               {ZONE_TYPE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -114,32 +141,38 @@ export function ZoneForm({ initialZone }: ZoneFormProps) {
             />
           </Field>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Field
-              label="Min (°C)"
-              required
-              error={errors.tempMin?.message}
-            >
-              <Input
-                type="number"
-                step="0.5"
-                invalid={!!errors.tempMin}
-                {...register("tempMin")}
-              />
-            </Field>
-            <Field
-              label="Max (°C)"
-              required
-              error={errors.tempMax?.message}
-            >
-              <Input
-                type="number"
-                step="0.5"
-                invalid={!!errors.tempMax}
-                {...register("tempMax")}
-              />
-            </Field>
-          </div>
+          <Field
+            label="Surface (m²)"
+            required
+            hint="Surface au sol utilisable."
+            error={errors.areaM2?.message}
+          >
+            <Input
+              type="number"
+              step="0.5"
+              min="0"
+              invalid={!!errors.areaM2}
+              {...register("areaM2")}
+            />
+          </Field>
+
+          <Field label="Min (°C)" required error={errors.tempMin?.message}>
+            <Input
+              type="number"
+              step="0.5"
+              invalid={!!errors.tempMin}
+              {...register("tempMin")}
+            />
+          </Field>
+
+          <Field label="Max (°C)" required error={errors.tempMax?.message}>
+            <Input
+              type="number"
+              step="0.5"
+              invalid={!!errors.tempMax}
+              {...register("tempMax")}
+            />
+          </Field>
         </div>
 
         <div className="flex justify-end gap-3 mt-8 pt-5 border-t border-gray-100">
