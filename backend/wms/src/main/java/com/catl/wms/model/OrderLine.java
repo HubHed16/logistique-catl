@@ -34,5 +34,8 @@ public class OrderLine {
     @Column(name = "quantity_picked")
     private Float quantityPicked;
 
+    @Column(name = "article_price")
+    private Float articlePrice;
+
     private String unit;
 }

@@ -14,7 +14,7 @@ import java.util.UUID;
 public class StockItem {
 
     public enum StockStatus {
-        AVAILABLE, RESERVED, EXPIRED, QUARANTINE, CONSUMED
+        AVAILABLE, RESERVED, BLOCKED, CONSUMED
     }
 
     @Id
