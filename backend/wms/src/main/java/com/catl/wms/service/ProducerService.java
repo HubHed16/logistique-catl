@@ -4,7 +4,7 @@ import com.catl.wms.dao.ProducerDao;
 import com.catl.wms.dto.ProducerDto;
 import com.catl.wms.repository.ProducerRepository;
 import com.catl.wms.service.mapper.ProducerMapper;
-import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -13,11 +13,11 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Service
-@NoArgsConstructor
+@RequiredArgsConstructor
 public class ProducerService {
 
-    ProducerRepository producerRepository;
-    ProducerMapper producerMapper;
+    private final ProducerRepository producerRepository;
+    private final ProducerMapper producerMapper;
 
     public Page<ProducerDto> getAllProducer(PageRequest pageRequest){
         return producerRepository.findAll(pageRequest).map(producerMapper::getDto);

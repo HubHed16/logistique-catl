@@ -1,7 +1,7 @@
 package com.catl.wms.controller;
 
-import com.catl.wms.dto.ProducerDto;
-import com.catl.wms.service.ProducerService;
+import com.catl.wms.dto.ProductDto;
+import com.catl.wms.service.ProductService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Min;
@@ -16,49 +16,49 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-@RequestMapping("/api/producers")
+@RequestMapping("/api/product")
 @RestController
-@Tag(name = "Producer", description = "API to manage producers")
+@Tag(name = "Product", description = "API to manage products")
 @RequiredArgsConstructor
-public class ProducerController {
+public class ProductController {
 
-    private final ProducerService producerService;
+    private final ProductService productService;
 
-    @GetMapping("/getAll")
-    @Operation(summary = "Retrieve all producers with pagination")
-    public ResponseEntity<List<ProducerDto>> getAllProducer(
+    @GetMapping("/getAllProduct")
+    @Operation(summary = "Retrieve all products with pagination")
+    public ResponseEntity<List<ProductDto>> getAllProduct(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
             @RequestParam(defaultValue = "20") @Min(1) int size) {
 
         var pageRequest = PageRequest.of(page, size);
-        Page<ProducerDto> producer = producerService.getAllProducer(pageRequest);
+        Page<ProductDto> producer = productService.getAllProduct(pageRequest);
+
         if (producer.isEmpty()) {
             return ResponseEntity.noContent().build();
         }
         return ResponseEntity.ok(producer.getContent());
     }
 
-    @GetMapping("getProducerById")
-    @Operation(summary = "Retrieve a producer by its ID")
-    public ResponseEntity<Optional<ProducerDto>> getProducerById(@RequestParam UUID id) {
-        var producer = producerService.getProducerById(id);
+
+    @GetMapping("/getProductById")
+    @Operation(summary = "Retrieve a product by its ID")
+    public ResponseEntity<Optional<ProductDto>> getProductById(@RequestParam UUID idProduct){
+        var producer = productService.getProductById(idProduct);
         if (producer.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(producer);
     }
 
-
-    @PostMapping("/producers")
-    public ResponseEntity<ProducerDto> saveOrUpdateProducer(@RequestParam(required = false) UUID producerId, @RequestBody ProducerDto producerDto) {
-        ProducerDto result = producerService.saveOrUpdateProducer(producerId, producerDto);
+    @PostMapping("/products")
+    public ResponseEntity<ProductDto> saveOrUpdateProducer(@RequestParam(required = false) UUID productId, @RequestBody ProductDto productDto) {
+        ProductDto result = productService.saveOrUpdateProduct(productId, productDto);
         return ResponseEntity.ok(result);
     }
 
     @DeleteMapping("/producers")
-    public ResponseEntity<Void> deleteProducer(@RequestParam UUID producerId) {
-        producerService.deleteProducer(producerId);
+    public ResponseEntity<Void> deleteProducer(@RequestParam UUID productId) {
+        productService.deleteProducer(productId);
         return ResponseEntity.noContent().build();
     }
 }
-
