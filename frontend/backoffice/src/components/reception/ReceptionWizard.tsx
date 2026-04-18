@@ -111,6 +111,34 @@ export function ReceptionWizard() {
         { shouldValidate: false },
       );
     }
+
+    // Défaut DLC/DDM selon le type de conservation — frais = DLC courte,
+    // ambiant/négatif = DDM longue. Reste modifiable par l'utilisateur.
+    const today = new Date();
+    const daysByType: Record<string, number> = {
+      fresh: 7,
+      ambient: 180,
+      negative: 365,
+    };
+    const days = daysByType[product.storageType ?? "ambient"] ?? 180;
+    const future = new Date(today);
+    future.setDate(future.getDate() + days);
+    const iso = future.toISOString().slice(0, 10);
+    if (product.storageType === "fresh") {
+      setValue("expirationDate", iso, { shouldValidate: false });
+      setValue("bestBefore", "", { shouldValidate: false });
+    } else {
+      setValue("bestBefore", iso, { shouldValidate: false });
+      setValue("expirationDate", "", { shouldValidate: false });
+    }
+
+    // N° de lot par défaut — horodaté, dérivé du code produit / EAN
+    const stamp = today.toISOString().slice(0, 10).replace(/-/g, "");
+    const suffix = (product.ean ?? product.id).slice(-4).padStart(4, "0");
+    setValue("lotNumber", `LOT-${stamp}-${suffix}`, {
+      shouldValidate: false,
+    });
+
     setIsCreatingProduct(false);
   }
 
