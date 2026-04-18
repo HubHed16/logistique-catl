@@ -24,7 +24,13 @@ const items: NavItem[] = [
   { href: "/reception", label: "Réception", icon: Inbox },
   { href: "/zones", label: "Zones", icon: Layers },
   { href: "/history", label: "Historique", icon: History },
-  { href: "/simulator/index.html", label: "Simulateur", icon: Route, external: true },
+  { href: "/simulator", label: "Simulateur", icon: Route },
+  {
+    href: "/simulator/index.html",
+    label: "Simulateur (legacy)",
+    icon: Route,
+    external: true,
+  },
 ];
 
 export function Nav() {
