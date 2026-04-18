@@ -18,10 +18,7 @@ public class StockPlacementService {
     private final StockItemRepository stockItemRepository;
     private final StorageLocationRepository storageLocationRepository;
 
-    /**
-     * Le WMS assigne automatiquement une StorageLocation libre au StockItem
-     * selon le storage_type du produit.
-     */
+
     @Transactional
     public PlacementResponse assignLocation(UUID stockItemId, UUID operatorId) {
 
@@ -29,23 +26,23 @@ public class StockPlacementService {
                 .orElseThrow(() -> new IllegalArgumentException(
                         "StockItem not found: " + stockItemId));
 
-        // Vérification : le StockItem doit être AVAILABLE (QC OK)
+
         if (stockItem.getStatus() != StockItem.StockStatus.AVAILABLE) {
             throw new IllegalArgumentException(
                     "StockItem must be AVAILABLE to be placed. Current status: " + stockItem.getStatus());
         }
 
-        // Déjà placé ?
+
         if (stockItem.getLocation() != null) {
             throw new IllegalArgumentException(
                     "StockItem is already placed at location: " + stockItem.getLocation().getLabel());
         }
 
-        // Déterminer le type de zone selon le storage_type du produit
+
         StorageZone.ZoneType requiredZoneType = mapStorageTypeToZoneType(
                 stockItem.getProduct().getStorageType());
 
-        // Chercher une location libre
+
         List<StorageLocation> available = storageLocationRepository
                 .findAvailableByZoneType(requiredZoneType);
 
@@ -61,10 +58,7 @@ public class StockPlacementService {
         return PlacementResponse.from(stockItem);
     }
 
-    /**
-     * Le préparateur scanne pour confirmer qu'il a physiquement déposé
-     * le produit sur le rack.
-     */
+
     @Transactional
     public PlacementResponse confirmPlacement(UUID stockItemId, UUID operatorId) {
 
@@ -77,16 +71,14 @@ public class StockPlacementService {
                     "StockItem has no assigned location. Call /assign first.");
         }
 
-        // Le status du StockItem confirme qu'il est bien en rack
+
         stockItem.setStatusReason("Placement confirmed at " + stockItem.getLocation().getLabel());
         stockItem = stockItemRepository.save(stockItem);
 
         return PlacementResponse.from(stockItem);
     }
 
-    /**
-     * Liste toutes les locations libres d'un type de zone donné.
-     */
+
     public List<AvailableLocationResponse> getAvailableLocations(StorageZone.ZoneType zoneType) {
         return storageLocationRepository.findAvailableByZoneType(zoneType)
                 .stream()
@@ -94,10 +86,6 @@ public class StockPlacementService {
                 .toList();
     }
 
-    /**
-     * Mapping entre le storage_type d'un produit (chaîne libre)
-     * et le ZoneType (enum).
-     */
     private StorageZone.ZoneType mapStorageTypeToZoneType(String storageType) {
         if (storageType == null) return StorageZone.ZoneType.AMBIENT;
 

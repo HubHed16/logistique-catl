@@ -19,20 +19,15 @@ public class ReceptionService {
     private final OrderLineRepository orderLineRepository;
     private final StockItemRepository stockItemRepository;
 
-    /**
-     * Réceptionne une livraison correspondant à un Order existant.
-     * Pour chaque OrderLine, crée un StockItem.
-     * Gère les écarts de quantité (reçu vs commandé).
-     */
     @Transactional
     public ReceptionResponse receiveOrder(ReceptionRequest request) {
 
-        // 1. Récupérer l'Order
+
         Order order = orderRepository.findById(request.getOrderId())
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Order not found: " + request.getOrderId()));
 
-        // 2. Vérifier que l'Order est dans un état réceptionnable
+
         if (order.getStatus() == Order.OrderStatus.DELIVERED
                 || order.getStatus() == Order.OrderStatus.CANCELLED) {
             throw new IllegalArgumentException(
@@ -42,27 +37,27 @@ public class ReceptionService {
         List<ReceptionLineResponse> lineResponses = new ArrayList<>();
         int discrepancyCount = 0;
 
-        // 3. Traiter chaque ligne reçue
+
         for (ReceptionLineItem lineItem : request.getLines()) {
 
             OrderLine orderLine = orderLineRepository.findById(lineItem.getOrderLineId())
                     .orElseThrow(() -> new IllegalArgumentException(
                             "OrderLine not found: " + lineItem.getOrderLineId()));
 
-            // Vérifier la cohérence : l'OrderLine doit appartenir à l'Order demandé
+
             if (!orderLine.getOrder().getId().equals(order.getId())) {
                 throw new IllegalArgumentException(
                         "OrderLine " + orderLine.getId() + " does not belong to Order " + order.getId());
             }
 
-            // Calculer l'écart
+
             Float qtyOrdered = orderLine.getQuantityOrdered() != null ? orderLine.getQuantityOrdered() : 0f;
             Float qtyReceived = lineItem.getQuantityReceived();
             Float discrepancy = qtyReceived - qtyOrdered;
             boolean hasDiscrepancy = Math.abs(discrepancy) > 0.001f;
             if (hasDiscrepancy) discrepancyCount++;
 
-            // Créer le StockItem
+
             StockItem stockItem = StockItem.builder()
                     .product(orderLine.getProduct())
                     .cooperative(order.getCooperative())
@@ -80,7 +75,7 @@ public class ReceptionService {
 
             stockItem = stockItemRepository.save(stockItem);
 
-            // Lier le StockItem à l'OrderLine + mettre à jour quantityPicked
+
             orderLine.setStockItem(stockItem);
             orderLine.setQuantityPicked(qtyReceived);
             orderLineRepository.save(orderLine);
@@ -99,7 +94,7 @@ public class ReceptionService {
                     .build());
         }
 
-        // 4. Mettre à jour le status de l'Order (réception effectuée)
+
         order.setStatus(Order.OrderStatus.CONFIRMED);
         order = orderRepository.save(order);
 

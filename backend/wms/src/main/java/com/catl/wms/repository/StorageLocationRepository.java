@@ -13,9 +13,7 @@ public interface StorageLocationRepository extends JpaRepository<StorageLocation
 
     List<StorageLocation> findByZoneId(UUID zoneId);
 
-    /**
-     * Emplacements libres (pas de stock_item AVAILABLE dessus) dans une zone donnée.
-     */
+
     @Query("""
         SELECT l FROM StorageLocation l
         WHERE l.zone.id = :zoneId
@@ -27,9 +25,7 @@ public interface StorageLocationRepository extends JpaRepository<StorageLocation
     """)
     List<StorageLocation> findAvailableInZone(@Param("zoneId") UUID zoneId);
 
-    /**
-     * Emplacements libres dans n'importe quelle zone d'un type donné (ex: COLD, DRY...).
-     */
+
     @Query("""
         SELECT l FROM StorageLocation l
         WHERE l.zone.type = :zoneType

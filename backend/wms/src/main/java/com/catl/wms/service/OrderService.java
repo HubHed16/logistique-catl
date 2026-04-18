@@ -20,7 +20,7 @@ public class OrderService {
     private final ProductRepository productRepository;
     private final CooperativeRepository cooperativeRepository;
 
-    // ===== CRUD ORDER =====
+
 
     @Transactional
     public OrderResponse createOrder(OrderRequest request) {
@@ -119,14 +119,14 @@ public class OrderService {
                     "Order cannot be deleted in status: " + order.getStatus());
         }
 
-        // Supprimer d'abord les lignes
+
         List<OrderLine> lines = orderLineRepository.findByOrderId(orderId);
         orderLineRepository.deleteAll(lines);
 
         orderRepository.delete(order);
     }
 
-    // ===== STATUS TRANSITIONS =====
+
 
     @Transactional
     public OrderResponse confirmOrder(UUID orderId) {
@@ -170,7 +170,7 @@ public class OrderService {
         return OrderResponse.from(order, lines);
     }
 
-    // ===== ORDER LINES =====
+
 
     @Transactional
     public OrderLineResponse addLine(UUID orderId, OrderLineRequest request) {
