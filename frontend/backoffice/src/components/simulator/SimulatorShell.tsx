@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { DepotForm } from "@/components/simulator/DepotForm";
+import { StepperBar } from "@/components/simulator/StepperBar";
 import {
   depotSchema,
   type DepotFormInput,
@@ -112,12 +113,12 @@ export function SimulatorShell() {
       <div className="space-y-5">
         <header className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-2xl font-bold text-catl-primary">
+            <h1 className="text-2xl font-bold text-catl-primary leading-tight">
               Simulateur logistique
             </h1>
             <p className="text-sm text-catl-text mt-1">
               Planifier ses tournées en circuit court — coûts, temps, ratio
-              logistique, dépôt géolocalisé.
+              logistique.
             </p>
           </div>
           <Button
@@ -129,6 +130,12 @@ export function SimulatorShell() {
             Réinitialiser tout
           </Button>
         </header>
+
+        <StepperBar
+          current={locked ? "tours" : "depot"}
+          depotLocked={locked}
+          toursCount={state.tours.length}
+        />
 
         <form onSubmit={onValidate} noValidate className="space-y-5">
           {locked ? (

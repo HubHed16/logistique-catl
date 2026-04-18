@@ -186,10 +186,10 @@ export function SimulatorMap({ pickMode, onPicked }: Props) {
   }, []);
 
   return (
-    <div className="relative">
+    <div className="relative catl-map-wrapper">
       <div
         ref={containerRef}
-        className="w-full h-[540px] rounded-md border border-gray-200 overflow-hidden bg-catl-bg"
+        className="w-full h-[680px] max-h-[calc(100vh-140px)] bg-catl-bg"
         aria-label="Carte du simulateur"
       />
       {pickMode && (
