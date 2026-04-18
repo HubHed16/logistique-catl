@@ -1,0 +1,15 @@
+-- La base `wms` est créée automatiquement via CLICKHOUSE_DB.
+-- Ajouter ici les tables ClickHouse si elles doivent être pré-créées
+-- avec un moteur spécifique (ex : ReplacingMergeTree pour gérer les UPDATEs).
+--
+-- Exemple :
+-- CREATE TABLE IF NOT EXISTS wms.orders
+-- (
+--     id          UInt64,
+--     status      String,
+--     created_at  DateTime64(3),
+--     __deleted   String DEFAULT 'false',
+--     _version    UInt64
+-- )
+-- ENGINE = ReplacingMergeTree(_version)
+-- ORDER BY (id);
