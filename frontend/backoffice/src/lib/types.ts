@@ -98,6 +98,24 @@ export interface Product {
   producerId: string;
 }
 
+export interface StockItem {
+  id: string;
+  productId: string;
+  locationId: string | null;
+  cooperativeId: string;
+  lotNumber: string | null;
+  quantity: number;
+  unit: StockItemUnit;
+  weightDecl: number | null;
+  weightAct: number | null;
+  receptionDate: string; // ISO date (YYYY-MM-DD)
+  expirationDate: string | null; // DLC
+  bestBefore: string | null; // DDM
+  status: StockItemStatus;
+  statusReason: string | null;
+  receptionTemp: number | null;
+}
+
 export interface ReceptionRequest {
   ean?: string;
   lotNumber?: string;

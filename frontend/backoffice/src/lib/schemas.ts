@@ -88,3 +88,122 @@ export const locationFormSchema = z.object({
 
 export type LocationFormInput = z.input<typeof locationFormSchema>;
 export type LocationFormValues = z.output<typeof locationFormSchema>;
+
+// ─── Produit (création inline depuis la réception) ─────────────────────────
+
+const STOCK_UNITS = [
+  "kg",
+  "piece",
+  "liter",
+  "bunch",
+  "dozen",
+  "box",
+] as const;
+
+export const productCreateSchema = z.object({
+  name: z.string().trim().min(2, "Au moins 2 caractères").max(120),
+  category: z.string().trim().min(2, "Catégorie requise").max(80),
+  unit: z.enum(STOCK_UNITS),
+  storageType: z.enum(ZONE_TYPES),
+  producerId: z.string().min(1, "Producteur requis"),
+  isBio: z.boolean(),
+  certification: z
+    .string()
+    .trim()
+    .max(80)
+    .optional()
+    .transform((v) => (v ? v : null))
+    .nullable(),
+  ean: z.string().trim().max(32).optional().nullable(),
+});
+
+export type ProductCreateInput = z.input<typeof productCreateSchema>;
+export type ProductCreateValues = z.output<typeof productCreateSchema>;
+
+// ─── Réception (wizard préparateur) ────────────────────────────────────────
+
+export const receptionSchema = z
+  .object({
+    // Étape 1 — identification
+    productId: z.string().min(1, "Produit requis"),
+    ean: z.string().trim().optional(),
+    lotNumber: z
+      .string()
+      .trim()
+      .max(60)
+      .optional()
+      .transform((v) => (v ? v : undefined)),
+
+    // Étape 2 — quantité & poids & T°
+    quantity: z.coerce
+      .number({ message: "Quantité requise" })
+      .positive("Quantité strictement positive"),
+    unit: z.enum(STOCK_UNITS),
+    weightDecl: z
+      .union([
+        z.coerce.number().nonnegative(),
+        z.literal("").transform(() => undefined),
+      ])
+      .optional(),
+    weightAct: z
+      .union([
+        z.coerce.number().nonnegative(),
+        z.literal("").transform(() => undefined),
+      ])
+      .optional(),
+    receptionTemp: z
+      .union([
+        z.coerce.number().min(-40).max(60),
+        z.literal("").transform(() => undefined),
+      ])
+      .optional(),
+
+    // Étape 3 — dates
+    expirationDate: z
+      .string()
+      .optional()
+      .transform((v) => (v ? v : undefined)),
+    bestBefore: z
+      .string()
+      .optional()
+      .transform((v) => (v ? v : undefined)),
+
+    // Étape 4 — qualité
+    qualityOk: z.boolean(),
+    statusReason: z
+      .string()
+      .trim()
+      .max(300)
+      .optional()
+      .transform((v) => (v ? v : undefined)),
+
+    // Étape 5 — routing
+    routing: z.enum(["stock", "xdock"]),
+    locationId: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.expirationDate && !data.bestBefore) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["bestBefore"],
+        message: "Au moins une date (DLC ou DDM) est requise",
+      });
+    }
+    if (!data.qualityOk && !data.statusReason) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["statusReason"],
+        message: "Motif requis si le contrôle est KO",
+      });
+    }
+    if (data.qualityOk && data.routing === "stock" && !data.locationId) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["locationId"],
+        message: "Emplacement requis pour un routage en stock",
+      });
+    }
+  });
+
+export type ReceptionFormInput = z.input<typeof receptionSchema>;
+export type ReceptionFormValues = z.output<typeof receptionSchema>;
