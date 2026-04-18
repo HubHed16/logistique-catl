@@ -17,7 +17,7 @@ export function useAvailableLocations(
   return useQuery({
     queryKey: availableLocationsKey(storageType),
     queryFn: () =>
-      api.get<StorageLocation[]>("/api/v1/storage-locations/available", {
+      api.get<StorageLocation[]>("/api/storage-locations/available", {
         storageType: storageType ?? null,
       }),
     enabled: !!storageType,
@@ -34,17 +34,16 @@ export function useReception() {
         lotNumber: values.lotNumber,
         quantity: values.quantity,
         unit: values.unit,
-        weightDecl: values.weightDecl,
-        weightAct: values.weightAct,
+        weightDeclared: values.weightDeclared,
+        weightActual: values.weightActual,
         receptionTemp: values.receptionTemp,
         expirationDate: values.expirationDate,
         bestBefore: values.bestBefore,
         qualityOk: values.qualityOk,
         statusReason: values.statusReason,
-        routing: values.routing,
         locationId: values.locationId,
       };
-      return api.post<ReceptionResponse>("/api/v1/reception", payload);
+      return api.post<ReceptionResponse>("/api/reception", payload);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["storage-locations", "available"] });

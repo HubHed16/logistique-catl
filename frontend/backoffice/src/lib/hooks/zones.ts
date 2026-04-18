@@ -14,14 +14,14 @@ const zoneLocationsKey = (zoneId: string) =>
 export function useZones() {
   return useQuery({
     queryKey: ZONES_KEY,
-    queryFn: () => api.get<StorageZone[]>("/api/v1/storage-zones"),
+    queryFn: () => api.get<StorageZone[]>("/api/storage-zones"),
   });
 }
 
 export function useZone(id: string | undefined) {
   return useQuery({
     queryKey: id ? zoneKey(id) : ["zones", "missing"],
-    queryFn: () => api.get<StorageZone>(`/api/v1/storage-zones/${id}`),
+    queryFn: () => api.get<StorageZone>(`/api/storage-zones/${id}`),
     enabled: !!id,
   });
 }
@@ -31,7 +31,7 @@ export function useZoneLocations(zoneId: string | undefined) {
     queryKey: zoneId ? zoneLocationsKey(zoneId) : ["zones", "locations", "missing"],
     queryFn: () =>
       api.get<StorageLocation[]>(
-        `/api/v1/storage-zones/${zoneId}/locations`,
+        `/api/storage-zones/${zoneId}/locations`,
       ),
     enabled: !!zoneId,
   });
@@ -41,7 +41,7 @@ export function useCreateZone() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (values: ZoneFormValues) =>
-      api.post<StorageZone>("/api/v1/storage-zones", values),
+      api.post<StorageZone>("/api/storage-zones", values),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ZONES_KEY });
     },
@@ -52,7 +52,7 @@ export function useUpdateZone(id: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (values: ZoneFormValues) =>
-      api.patch<StorageZone>(`/api/v1/storage-zones/${id}`, values),
+      api.patch<StorageZone>(`/api/storage-zones/${id}`, values),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ZONES_KEY });
       qc.invalidateQueries({ queryKey: zoneKey(id) });
@@ -64,7 +64,7 @@ export function useDeleteZone() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) =>
-      api.delete<void>(`/api/v1/storage-zones/${id}`),
+      api.delete<void>(`/api/storage-zones/${id}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ZONES_KEY });
     },
@@ -76,7 +76,7 @@ export function useCreateLocation(zoneId: string) {
   return useMutation({
     mutationFn: (values: LocationFormValues) =>
       api.post<StorageLocation>(
-        `/api/v1/storage-zones/${zoneId}/locations`,
+        `/api/storage-zones/${zoneId}/locations`,
         values,
       ),
     onSuccess: () => {
@@ -96,7 +96,7 @@ export function useUpdateLocation(zoneId: string) {
     }: {
       id: string;
       values: LocationFormValues;
-    }) => api.patch<StorageLocation>(`/api/v1/storage-locations/${id}`, values),
+    }) => api.patch<StorageLocation>(`/api/storage-locations/${id}`, values),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: zoneLocationsKey(zoneId) });
     },
@@ -107,7 +107,7 @@ export function useDeleteLocation(zoneId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) =>
-      api.delete<void>(`/api/v1/storage-locations/${id}`),
+      api.delete<void>(`/api/storage-locations/${id}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: zoneLocationsKey(zoneId) });
       qc.invalidateQueries({ queryKey: ZONES_KEY });

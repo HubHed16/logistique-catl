@@ -61,7 +61,6 @@ export function ZoneList() {
               <Th>Type</Th>
               <Th align="right">Cible (°C)</Th>
               <Th align="right">Plage</Th>
-              <Th align="right">Surface (m²)</Th>
               <Th align="right"># empl.</Th>
               <Th align="right">Actions</Th>
             </tr>
@@ -84,13 +83,12 @@ export function ZoneList() {
                   <ZoneTypeBadge type={z.type} />
                 </Td>
                 <Td align="right" mono>
-                  {z.targetTemp.toFixed(1)}
+                  {z.targetTemp != null ? z.targetTemp.toFixed(1) : "—"}
                 </Td>
                 <Td align="right" mono>
-                  {z.tempMin.toFixed(1)} → {z.tempMax.toFixed(1)}
-                </Td>
-                <Td align="right" mono>
-                  {z.areaM2.toFixed(1)}
+                  {z.tempMin != null && z.tempMax != null
+                    ? `${z.tempMin.toFixed(1)} → ${z.tempMax.toFixed(1)}`
+                    : "—"}
                 </Td>
                 <Td align="right" mono>
                   {z.locationsCount ?? 0}

@@ -43,10 +43,9 @@ export function ZoneForm({ initialZone }: ZoneFormProps) {
       ? {
           name: initialZone.name,
           type: initialZone.type,
-          targetTemp: initialZone.targetTemp,
-          tempMin: initialZone.tempMin,
-          tempMax: initialZone.tempMax,
-          areaM2: initialZone.areaM2,
+          targetTemp: initialZone.targetTemp ?? typeDefaults.targetTemp,
+          tempMin: initialZone.tempMin ?? typeDefaults.tempMin,
+          tempMax: initialZone.tempMax ?? typeDefaults.tempMax,
         }
       : {
           name: "",
@@ -54,7 +53,6 @@ export function ZoneForm({ initialZone }: ZoneFormProps) {
           targetTemp: typeDefaults.targetTemp,
           tempMin: typeDefaults.tempMin,
           tempMax: typeDefaults.tempMax,
-          areaM2: 100,
         },
   });
 
@@ -138,21 +136,6 @@ export function ZoneForm({ initialZone }: ZoneFormProps) {
               step="0.5"
               invalid={!!errors.targetTemp}
               {...register("targetTemp")}
-            />
-          </Field>
-
-          <Field
-            label="Surface (m²)"
-            required
-            hint="Surface au sol utilisable."
-            error={errors.areaM2?.message}
-          >
-            <Input
-              type="number"
-              step="0.5"
-              min="0"
-              invalid={!!errors.areaM2}
-              {...register("areaM2")}
             />
           </Field>
 
