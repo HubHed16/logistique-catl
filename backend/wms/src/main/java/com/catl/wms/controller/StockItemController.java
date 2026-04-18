@@ -7,6 +7,10 @@ import com.catl.wms.model.StockItem;
 import com.catl.wms.service.StockItemService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,6 +26,8 @@ public class StockItemController {
 
     private final StockItemService stockItemService;
 
+
+
     @PostMapping
     public ResponseEntity<StockItemResponse> create(@Valid @RequestBody StockItemRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(stockItemService.create(request));
@@ -33,8 +39,9 @@ public class StockItemController {
     }
 
     @GetMapping
-    public ResponseEntity<List<StockItemResponse>> list() {
-        return ResponseEntity.ok(stockItemService.listAll());
+    public ResponseEntity<Page<StockItemResponse>> list(
+            @PageableDefault(size = 20, sort = "receptionDate", direction = Sort.Direction.DESC) Pageable pageable) {
+        return ResponseEntity.ok(stockItemService.list(pageable));
     }
 
     @PutMapping("/{id}")
@@ -50,17 +57,21 @@ public class StockItemController {
         return ResponseEntity.noContent().build();
     }
 
+
     @GetMapping("/search")
-    public ResponseEntity<List<StockItemResponse>> search(
+    public ResponseEntity<Page<StockItemResponse>> search(
             @RequestParam(required = false) UUID productId,
             @RequestParam(required = false) UUID cooperativeId,
             @RequestParam(required = false) UUID locationId,
             @RequestParam(required = false) StockItem.StockStatus status,
-            @RequestParam(required = false) String lotNumber) {
+            @RequestParam(required = false) String lotNumber,
+            @PageableDefault(size = 20, sort = "receptionDate", direction = Sort.Direction.DESC) Pageable pageable) {
 
         return ResponseEntity.ok(
-                stockItemService.search(productId, cooperativeId, locationId, status, lotNumber));
+                stockItemService.search(productId, cooperativeId, locationId, status, lotNumber, pageable));
     }
+
+
 
     @GetMapping("/expiring-soon")
     public ResponseEntity<List<StockItemResponse>> expiringSoon(

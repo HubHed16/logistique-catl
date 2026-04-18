@@ -7,6 +7,8 @@ import com.catl.wms.model.*;
 import com.catl.wms.repository.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -22,7 +24,6 @@ public class StockItemService {
     private final ProductRepository productRepository;
     private final StorageLocationRepository storageLocationRepository;
     private final CooperativeRepository cooperativeRepository;
-
 
 
     @Transactional
@@ -61,7 +62,6 @@ public class StockItemService {
     }
 
 
-
     public StockItemResponse getById(UUID id) {
         StockItem stockItem = stockItemRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException(
@@ -69,22 +69,23 @@ public class StockItemService {
         return StockItemResponse.from(stockItem);
     }
 
-    public List<StockItemResponse> listAll() {
-        return stockItemRepository.findAll().stream()
-                .map(StockItemResponse::from)
-                .toList();
+
+    public Page<StockItemResponse> list(Pageable pageable) {
+        return stockItemRepository.findAll(pageable)
+                .map(StockItemResponse::from);
     }
 
-    public List<StockItemResponse> search(
+
+    public Page<StockItemResponse> search(
             UUID productId,
             UUID cooperativeId,
             UUID locationId,
             StockItem.StockStatus status,
-            String lotNumber) {
+            String lotNumber,
+            Pageable pageable) {
 
-        return stockItemRepository.findWithFilters(productId, cooperativeId, locationId, status, lotNumber).stream()
-                .map(StockItemResponse::from)
-                .toList();
+        return stockItemRepository.findWithFilters(productId, cooperativeId, locationId, status, lotNumber, pageable)
+                .map(StockItemResponse::from);
     }
 
     public List<StockItemResponse> findExpiringSoon(int daysAhead) {
@@ -99,6 +100,7 @@ public class StockItemService {
                 .map(StockItemResponse::from)
                 .toList();
     }
+
 
 
     @Transactional

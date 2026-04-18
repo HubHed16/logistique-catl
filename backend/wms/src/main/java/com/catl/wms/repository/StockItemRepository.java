@@ -1,6 +1,8 @@
 package com.catl.wms.repository;
 
 import com.catl.wms.model.StockItem;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -17,6 +19,7 @@ public interface StockItemRepository extends JpaRepository<StockItem, UUID> {
     List<StockItem> findByLocationId(UUID locationId);
     List<StockItem> findByStatus(StockItem.StockStatus status);
     List<StockItem> findByLotNumber(String lotNumber);
+
 
     @Query("""
         SELECT s FROM StockItem s
@@ -42,11 +45,12 @@ public interface StockItemRepository extends JpaRepository<StockItem, UUID> {
         AND (:status IS NULL OR s.status = :status)
         AND (:lotNumber IS NULL OR s.lotNumber = :lotNumber)
     """)
-    List<StockItem> findWithFilters(
+    Page<StockItem> findWithFilters(
             @Param("productId") UUID productId,
             @Param("cooperativeId") UUID cooperativeId,
             @Param("locationId") UUID locationId,
             @Param("status") StockItem.StockStatus status,
-            @Param("lotNumber") String lotNumber
+            @Param("lotNumber") String lotNumber,
+            Pageable pageable
     );
 }

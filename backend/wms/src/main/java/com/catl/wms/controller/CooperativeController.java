@@ -5,11 +5,14 @@ import com.catl.wms.dto.cooperative.CooperativeResponse;
 import com.catl.wms.service.CooperativeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -30,13 +33,11 @@ public class CooperativeController {
     }
 
     @GetMapping
-    public ResponseEntity<List<CooperativeResponse>> list(
-            @RequestParam(required = false) String name) {
+    public ResponseEntity<Page<CooperativeResponse>> list(
+            @RequestParam(required = false) String name,
+            @PageableDefault(size = 20, sort = "name", direction = Sort.Direction.ASC) Pageable pageable) {
 
-        if (name != null && !name.isBlank()) {
-            return ResponseEntity.ok(cooperativeService.searchByName(name));
-        }
-        return ResponseEntity.ok(cooperativeService.listAll());
+        return ResponseEntity.ok(cooperativeService.list(name, pageable));
     }
 
     @PutMapping("/{id}")

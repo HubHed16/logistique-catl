@@ -6,6 +6,8 @@ import com.catl.wms.model.Cooperative;
 import com.catl.wms.repository.CooperativeRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -45,10 +47,17 @@ public class CooperativeService {
                 .toList();
     }
 
-    public List<CooperativeResponse> searchByName(String name) {
-        return cooperativeRepository.findByNameContainingIgnoreCase(name).stream()
-                .map(CooperativeResponse::from)
-                .toList();
+    /**
+     * Liste paginée (avec recherche optionnelle par nom).
+     */
+    public Page<CooperativeResponse> list(String name, Pageable pageable) {
+        Page<Cooperative> page;
+        if (name != null && !name.isBlank()) {
+            page = cooperativeRepository.findByNameContainingIgnoreCase(name, pageable);
+        } else {
+            page = cooperativeRepository.findAll(pageable);
+        }
+        return page.map(CooperativeResponse::from);
     }
 
     // ===== UPDATE =====
