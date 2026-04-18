@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Inbox, Layers, History } from "lucide-react";
+import { ExternalLink, History, Inbox, Layers, Route } from "lucide-react";
 
 export default function HomePage() {
   return (
@@ -17,7 +17,7 @@ export default function HomePage() {
 
       <section>
         <h2 className="catl-section-title">Raccourcis</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Link
             href="/reception"
             className="catl-card hover:shadow-md transition-shadow block"
@@ -56,6 +56,24 @@ export default function HomePage() {
               Consulter la chronologie des actions effectuées.
             </p>
           </Link>
+
+          <a
+            href="/simulator/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="catl-card hover:shadow-md transition-shadow block"
+          >
+            <div className="flex items-center gap-3 mb-2">
+              <Route className="w-5 h-5 text-catl-accent" />
+              <span className="font-bold text-catl-primary flex items-center gap-1.5">
+                Simulateur
+                <ExternalLink className="w-3 h-3 opacity-60" />
+              </span>
+            </div>
+            <p className="text-sm text-catl-text">
+              Ouvrir l&apos;ancien simulateur logistique (tournées + coûts).
+            </p>
+          </a>
         </div>
       </section>
     </div>
