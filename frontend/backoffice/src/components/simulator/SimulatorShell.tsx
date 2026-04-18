@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { RotateCcw } from "lucide-react";
@@ -14,7 +14,7 @@ import {
   type DepotFormValues,
 } from "@/lib/simulator/schemas";
 import { useSimulator } from "@/lib/simulator/state";
-import type { Depot } from "@/lib/simulator/types";
+import { emptyDepot, type Depot } from "@/lib/simulator/types";
 
 function toFormValues(d: Depot): DepotFormInput {
   return {
@@ -84,14 +84,10 @@ export function SimulatorShell() {
     defaultValues: toFormValues(state.depot),
   });
 
-  // Ré-initialise le form une seule fois quand le state hydrate depuis
-  // le localStorage (le provider dispatch `loadFromStorage` au mount).
-  const initDoneRef = useRef(false);
-  useEffect(() => {
-    if (initDoneRef.current) return;
-    initDoneRef.current = true;
-    methods.reset(toFormValues(state.depot));
-  }, [state.depot, methods]);
+  // Le provider ne rend les enfants qu'après hydratation depuis localStorage,
+  // donc le useForm ci-dessus est initialisé avec les bonnes valeurs dès
+  // le premier render. Les resets après coup (resetAll) sont pilotés
+  // explicitement via methods.reset dans onResetAll.
 
   const onValidate = methods.handleSubmit((values) => {
     dispatch({ type: "updateDepot", depot: fromFormValues(values) });
@@ -102,9 +98,9 @@ export function SimulatorShell() {
     if (!confirm("Réinitialiser l'ensemble du projet (dépôt + tournées) ?"))
       return;
     dispatch({ type: "resetAll" });
-    methods.reset(toFormValues({ ...state.depot }));
+    methods.reset(toFormValues(emptyDepot()));
     setPickMode(false);
-  }, [dispatch, methods, state.depot]);
+  }, [dispatch, methods]);
 
   const locked = state.depotLocked;
 

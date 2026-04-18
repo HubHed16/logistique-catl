@@ -1,4 +1,10 @@
 ############################
+# Local dev helpers (Claude Code preview / launcher)
+############################
+/.claude/
+/.claude-start-backoffice.sh
+
+############################
 # OS files
 ############################
 .DS_Store
