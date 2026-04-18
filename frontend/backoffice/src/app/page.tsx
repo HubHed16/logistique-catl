@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Inbox, Layers, Route, Users } from "lucide-react";
+import { HomeOverview } from "@/components/dashboard/HomeOverview";
 
 export default function HomePage() {
   return (
@@ -14,6 +15,8 @@ export default function HomePage() {
           fiches producteurs et simulateur logistique.
         </p>
       </div>
+
+      <HomeOverview />
 
       <section>
         <h2 className="catl-section-title">Raccourcis</h2>

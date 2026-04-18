@@ -12,10 +12,12 @@ import {
   Users,
   Warehouse,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
+import { Kpi } from "@/components/ui/Kpi";
 import { ApiError, useOptimizeDailyRouting } from "@/lib/simulator/api-hooks";
 import type {
   OptimizationHubPickingList,
@@ -23,7 +25,15 @@ import type {
   OptimizationResult,
   OptimizationStopAssignment,
 } from "@/lib/simulator/types";
-import { OptimizationMap } from "@/components/optimization/OptimizationMap";
+import { OptimizationCharts } from "@/components/optimization/OptimizationCharts";
+
+const OptimizationMap = dynamic(
+  () =>
+    import("@/components/optimization/OptimizationMap").then(
+      (m) => m.OptimizationMap,
+    ),
+  { ssr: false },
+);
 
 const TODAY = new Date().toISOString().slice(0, 10);
 
@@ -220,6 +230,8 @@ function ResultView({ result }: { result: OptimizationResult }) {
         </div>
       </section>
 
+      {result.assignments.length > 0 && <OptimizationCharts result={result} />}
+
       {usedHubs.length > 0 && (
         <section className="catl-section catl-section--accent">
           <span className="catl-section-pill">
@@ -269,34 +281,6 @@ function ResultView({ result }: { result: OptimizationResult }) {
           <AssignmentsTable assignments={result.assignments} />
         </div>
       </section>
-    </div>
-  );
-}
-
-function Kpi({
-  label,
-  value,
-  icon,
-  emphasis,
-}: {
-  label: string;
-  value: string;
-  icon?: React.ReactNode;
-  emphasis?: boolean;
-}) {
-  return (
-    <div className="bg-white rounded-md border border-gray-200 px-3 py-2">
-      <div className="text-[10px] uppercase tracking-wide text-catl-text/70 font-semibold flex items-center gap-1.5">
-        {icon}
-        {label}
-      </div>
-      <div
-        className={`mt-0.5 font-bold ${
-          emphasis ? "text-lg text-catl-accent" : "text-sm text-catl-primary"
-        }`}
-      >
-        {value}
-      </div>
     </div>
   );
 }
