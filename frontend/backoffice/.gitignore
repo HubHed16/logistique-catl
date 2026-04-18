@@ -32,6 +32,10 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env*.example
+
+# yarn.lock (le .gitignore racine ignore *.lock, on le ré-inclut ici)
+!yarn.lock
 
 # vercel
 .vercel

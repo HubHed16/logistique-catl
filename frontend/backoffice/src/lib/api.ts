@@ -1,5 +1,9 @@
+import { dispatchMock } from "./mock/handlers";
+
 const BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
+
+const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === "true";
 
 export class ApiError extends Error {
   readonly status: number;
@@ -14,7 +18,7 @@ export class ApiError extends Error {
 
 type Query = Record<string, string | number | boolean | null | undefined>;
 
-function buildUrl(path: string, query?: Query): string {
+function buildUrl(path: string, query?: Query): URL {
   const url = new URL(
     path.startsWith("http") ? path : `${BASE_URL}${path}`,
     typeof window === "undefined" ? undefined : window.location.origin,
@@ -24,7 +28,7 @@ function buildUrl(path: string, query?: Query): string {
       if (v !== undefined && v !== null) url.searchParams.set(k, String(v));
     }
   }
-  return url.toString();
+  return url;
 }
 
 async function handle<T>(res: Response): Promise<T> {
@@ -51,15 +55,22 @@ function actorHeader(): Record<string, string> {
   return label ? { "X-Actor-Label": label } : {};
 }
 
+function performFetch(url: URL, init: RequestInit): Promise<Response> {
+  if (USE_MOCKS) return dispatchMock(url, init);
+  return fetch(url.toString(), init);
+}
+
 export const api = {
   get<T>(path: string, query?: Query): Promise<T> {
-    return fetch(buildUrl(path, query), {
+    const url = buildUrl(path, query);
+    return performFetch(url, {
       method: "GET",
       headers: { Accept: "application/json", ...actorHeader() },
     }).then((r) => handle<T>(r));
   },
   post<T>(path: string, body?: unknown): Promise<T> {
-    return fetch(buildUrl(path), {
+    const url = buildUrl(path);
+    return performFetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -70,7 +81,8 @@ export const api = {
     }).then((r) => handle<T>(r));
   },
   patch<T>(path: string, body?: unknown): Promise<T> {
-    return fetch(buildUrl(path), {
+    const url = buildUrl(path);
+    return performFetch(url, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -81,7 +93,8 @@ export const api = {
     }).then((r) => handle<T>(r));
   },
   delete<T>(path: string): Promise<T> {
-    return fetch(buildUrl(path), {
+    const url = buildUrl(path);
+    return performFetch(url, {
       method: "DELETE",
       headers: { Accept: "application/json", ...actorHeader() },
     }).then((r) => handle<T>(r));
