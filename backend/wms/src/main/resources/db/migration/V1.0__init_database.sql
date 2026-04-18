@@ -3,19 +3,20 @@
 -- =========================
 
 CREATE TYPE storage_zone_type AS ENUM (
-  'ambient',
-  'fresh',
-  'negative'
+  'cold',
+  'dry',
+  'frozen'
 );
 
 CREATE TYPE stock_item_status AS ENUM (
   'available',
   'reserved',
-  'blocked'
+  'blocked',
+  'consumed'
 );
 
 CREATE TYPE order_status AS ENUM (
-  'draft',
+  'pending',
   'confirmed',
   'preparing',
   'shipped',
@@ -143,7 +144,7 @@ CREATE TABLE orders (
                         cooperative_id UUID NOT NULL,
                         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                         shipped_at TIMESTAMP,
-                        status order_status NOT NULL DEFAULT 'draft',
+                        status order_status,
 
                         CONSTRAINT fk_orders_cooperative
                             FOREIGN KEY (cooperative_id)
