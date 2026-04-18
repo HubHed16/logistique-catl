@@ -1,7 +1,7 @@
 "use client";
 
 import { Info, Users } from "lucide-react";
-import { InfrastructureForm } from "@/components/simulator/InfrastructureForm";
+import { ProducerCatalog } from "@/components/simulator/ProducerCatalog";
 import { ProducerForm } from "@/components/simulator/ProducerForm";
 import { ProducerSelector } from "@/components/simulator/ProducerSelector";
 import { VehiclesSection } from "@/components/simulator/VehiclesSection";
@@ -22,7 +22,7 @@ export function ProducersShell() {
             Producteurs
           </h1>
           <p className="text-sm text-catl-text mt-1">
-            Gérer les fiches producteurs, leurs surfaces de stockage et leurs
+            Gérer les fiches producteurs, leur catalogue de produits et leurs
             véhicules.
           </p>
         </div>
@@ -48,7 +48,7 @@ export function ProducersShell() {
       {currentId && producer && (
         <div className="space-y-5">
           <ProducerForm producer={producer} />
-          <InfrastructureForm producerId={producer.id} />
+          <ProducerCatalog producerId={producer.id} />
           <VehiclesSection producerId={producer.id} />
         </div>
       )}
