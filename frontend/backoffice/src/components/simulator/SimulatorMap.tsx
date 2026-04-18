@@ -2,12 +2,13 @@
 
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   useComputeRoute,
   useProducer,
   useProducerCoords,
   useRoute,
+  useRouteLockStatus,
 } from "@/lib/simulator/api-hooks";
 import {
   DEFAULT_MAP_CENTER,
@@ -111,6 +112,87 @@ function addRecenterControl(
   return c;
 }
 
+type AddStopControl = L.Control & {
+  setActive: (active: boolean) => void;
+  setEnabled: (enabled: boolean) => void;
+};
+
+function addAddStopControl(map: L.Map, onToggle: () => void): AddStopControl {
+  // Le bouton reflète 3 états : désactivé (pas de route éditable), actif
+  // (mode clic enclenché), inactif (hover discret). L.DomEvent.disableClickPropagation
+  // évite que ce clic déclenche aussi map.on('click').
+  let btnRef: HTMLButtonElement | null = null;
+  let active = false;
+  let enabled = true;
+
+  const render = () => {
+    if (!btnRef) return;
+    btnRef.setAttribute("data-active", active ? "true" : "false");
+    btnRef.disabled = !enabled;
+    btnRef.setAttribute(
+      "aria-label",
+      active
+        ? "Désactiver l'ajout par clic"
+        : enabled
+          ? "Ajouter un arrêt en cliquant sur la carte"
+          : "Sélectionne d'abord un trajet éditable",
+    );
+    btnRef.title = btnRef.getAttribute("aria-label") ?? "";
+  };
+
+  const Ctrl = L.Control.extend({
+    options: { position: "topright" as const },
+    onAdd() {
+      const btn = L.DomUtil.create("button", "catl-map-btn");
+      btn.type = "button";
+      btn.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 1 1 16 0z"/>
+          <line x1="12" y1="7" x2="12" y2="13"/><line x1="9" y1="10" x2="15" y2="10"/>
+        </svg>`;
+      L.DomEvent.disableClickPropagation(btn);
+      btn.addEventListener("click", () => {
+        if (!enabled) return;
+        onToggle();
+      });
+      btnRef = btn;
+      render();
+      return btn;
+    },
+  });
+  const base = new Ctrl();
+  base.addTo(map);
+  const c = base as unknown as AddStopControl;
+  c.setActive = (a: boolean) => {
+    active = a;
+    render();
+  };
+  c.setEnabled = (e: boolean) => {
+    enabled = e;
+    render();
+  };
+  return c;
+}
+
+function buildPreviewIcon(): L.DivIcon {
+  // Marqueur d'aperçu — pin creux, couleur accent, atténué ; signale un
+  // arrêt en cours d'édition tant que le formulaire n'est pas validé.
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 36" width="30" height="36" aria-hidden="true" style="opacity:0.7">
+      <path fill="#e67e22" stroke="#b06617" stroke-width="1.5" stroke-dasharray="2 2"
+        d="M15 1.5c-6.9 0-12.5 5.4-12.5 12.1 0 8.5 11.2 21.2 11.7 21.8a1 1 0 0 0 1.6 0C16.3 34.8 27.5 22.1 27.5 13.6 27.5 6.9 21.9 1.5 15 1.5z"/>
+      <circle cx="15" cy="13.5" r="7" fill="white" stroke="#e67e22" stroke-width="1.5"/>
+      <line x1="15" y1="10" x2="15" y2="17" stroke="#e67e22" stroke-width="2" stroke-linecap="round"/>
+      <line x1="11.5" y1="13.5" x2="18.5" y2="13.5" stroke="#e67e22" stroke-width="2" stroke-linecap="round"/>
+    </svg>`;
+  return L.divIcon({
+    html: svg,
+    className: "catl-preview-marker",
+    iconSize: [30, 36],
+    iconAnchor: [15, 34],
+  });
+}
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
@@ -153,9 +235,10 @@ function decodePolyline(encoded: string): [number, number][] {
 }
 
 export function SimulatorMap() {
-  const { state } = useSimulator();
+  const { state, dispatch } = useSimulator();
   const { data: producer } = useProducer(state.currentProducerId);
   const { data: activeRoute } = useRoute(state.activeRouteId);
+  const { isLocked } = useRouteLockStatus(state.activeRouteId);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -163,6 +246,14 @@ export function SimulatorMap() {
   const stopsLayerRef = useRef<L.LayerGroup | null>(null);
   const polylineRef = useRef<L.Polyline | null>(null);
   const prevRouteIdRef = useRef<string | null>(null);
+  const addStopControlRef = useRef<AddStopControl | null>(null);
+  const previewMarkerRef = useRef<L.Marker | null>(null);
+
+  const [addingMode, setAddingMode] = useState(false);
+  // Ref "miroir" de addingMode pour accès synchrone depuis les handlers
+  // Leaflet (closures capturées une seule fois dans le useEffect d'init).
+  const addingModeRef = useRef(false);
+  const canAddRef = useRef(false);
 
   // Init carte
   useEffect(() => {
@@ -187,15 +278,93 @@ export function SimulatorMap() {
       return m ? m.getLatLng() : null;
     });
 
+    // Toggle mode ajout-par-clic. Le handler lit les refs pour éviter de
+    // recréer tout le useEffect d'init quand l'état change.
+    const toggleAddingMode = () => {
+      if (!canAddRef.current) return;
+      const next = !addingModeRef.current;
+      addingModeRef.current = next;
+      setAddingMode(next);
+      if (next) map.closePopup();
+    };
+    addStopControlRef.current = addAddStopControl(map, toggleAddingMode);
+
+    const onMapClick = (e: L.LeafletMouseEvent) => {
+      if (!addingModeRef.current || !canAddRef.current) return;
+      const { lat, lng } = e.latlng;
+      dispatch({ type: "setPendingStopCoords", coords: { lat, lng } });
+      // Mode "one-shot" : un clic capture, puis on sort du mode.
+      addingModeRef.current = false;
+      setAddingMode(false);
+      map.panTo(e.latlng, { animate: true, duration: 0.3 });
+    };
+    map.on("click", onMapClick);
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && addingModeRef.current) {
+        addingModeRef.current = false;
+        setAddingMode(false);
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+
     mapRef.current = map;
     return () => {
+      map.off("click", onMapClick);
+      document.removeEventListener("keydown", onKeyDown);
       map.remove();
       mapRef.current = null;
       depotMarkerRef.current = null;
       stopsLayerRef.current = null;
       polylineRef.current = null;
+      addStopControlRef.current = null;
+      previewMarkerRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Sync l'activation du bouton en fonction du verrouillage / présence de
+  // route active. canAddRef est utilisé par les handlers synchrones.
+  useEffect(() => {
+    const canAdd = !!state.activeRouteId && !isLocked;
+    canAddRef.current = canAdd;
+    addStopControlRef.current?.setEnabled(canAdd);
+    // Si la route devient verrouillée pendant qu'on était en mode ajout,
+    // on sort proprement.
+    if (!canAdd && addingModeRef.current) {
+      addingModeRef.current = false;
+      setAddingMode(false);
+    }
+  }, [state.activeRouteId, isLocked]);
+
+  // Reflète addingMode sur le bouton toggle + classe CSS (curseur crosshair).
+  useEffect(() => {
+    addStopControlRef.current?.setActive(addingMode);
+  }, [addingMode]);
+
+  // Marqueur d'aperçu : suit state.pendingStopCoords. Ajouté tant qu'on
+  // attend la saisie du formulaire, retiré dès que les coords sont reset.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const coords = state.pendingStopCoords;
+    if (!coords) {
+      if (previewMarkerRef.current) {
+        previewMarkerRef.current.remove();
+        previewMarkerRef.current = null;
+      }
+      return;
+    }
+    if (previewMarkerRef.current) {
+      previewMarkerRef.current.setLatLng([coords.lat, coords.lng]);
+    } else {
+      previewMarkerRef.current = L.marker([coords.lat, coords.lng], {
+        icon: buildPreviewIcon(),
+        interactive: false,
+        keyboard: false,
+      }).addTo(map);
+    }
+  }, [state.pendingStopCoords]);
 
   // Sync marqueur avec producer — la DTO wms n'a plus lat/lon, on géocode
   // l'adresse à la volée (cache 1h via React Query).
@@ -336,7 +505,9 @@ export function SimulatorMap() {
   }, []);
 
   return (
-    <div className="relative catl-map-wrapper">
+    <div
+      className={`relative catl-map-wrapper${addingMode ? " is-adding-stop" : ""}`}
+    >
       <div
         ref={containerRef}
         className="w-full h-[540px] md:h-[680px] md:max-h-[calc(100vh-180px)] bg-catl-bg"

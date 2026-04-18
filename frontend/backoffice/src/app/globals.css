@@ -202,13 +202,30 @@ body {
   transition: background 0.15s ease, color 0.15s ease;
   background-clip: padding-box;
 }
-.catl-map-btn:hover {
+.catl-map-btn:hover:not(:disabled) {
   background: var(--color-catl-accent);
   color: #ffffff;
 }
+.catl-map-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.catl-map-btn[data-active="true"] {
+  background: var(--color-catl-accent);
+  color: #ffffff;
+  border-color: var(--color-catl-accent);
+}
+
+/* Mode ajout-par-clic actif : on remplace le curseur natif Leaflet par
+   un crosshair pour signaler visuellement que le prochain clic crée un arrêt. */
+.catl-map-wrapper.is-adding-stop .leaflet-container,
+.catl-map-wrapper.is-adding-stop .leaflet-interactive {
+  cursor: crosshair !important;
+}
 
 /* Le divIcon Leaflet hérite d'un fond blanc par défaut — on neutralise */
-.catl-depot-marker {
+.catl-depot-marker,
+.catl-preview-marker {
   background: transparent !important;
   border: 0 !important;
 }
