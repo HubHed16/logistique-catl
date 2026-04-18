@@ -92,7 +92,6 @@ export function SimulatorShell() {
     methods.reset(toFormValues(state.depot));
   }, [state.depot, methods]);
 
-  // Au submit (lock), le form pousse ses valeurs validées vers le contexte.
   const onValidate = methods.handleSubmit((values) => {
     dispatch({ type: "updateDepot", depot: fromFormValues(values) });
     dispatch({ type: "lockDepot" });
@@ -106,9 +105,11 @@ export function SimulatorShell() {
     setPickMode(false);
   }, [dispatch, methods, state.depot]);
 
+  const locked = state.depotLocked;
+
   return (
     <FormProvider {...methods}>
-      <div className="space-y-6">
+      <div className="space-y-5">
         <header className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-2xl font-bold text-catl-primary">
@@ -129,34 +130,49 @@ export function SimulatorShell() {
           </Button>
         </header>
 
-        <form onSubmit={onValidate} noValidate>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <div>
-              <DepotForm
-                onRequestMapPick={() => setPickMode((m) => !m)}
-                mapPickMode={pickMode}
-              />
-            </div>
-            <div>
+        <form onSubmit={onValidate} noValidate className="space-y-5">
+          {locked ? (
+            // Post-lock : résumé compact sticky + carte pleine largeur
+            <>
+              <div className="sticky top-0 z-20 -mx-6 px-6 py-3 bg-catl-bg/90 backdrop-blur-sm border-b border-gray-200 transition-all">
+                <DepotForm
+                  onRequestMapPick={() => setPickMode((m) => !m)}
+                  mapPickMode={pickMode}
+                />
+              </div>
               <SimulatorMap
                 pickMode={pickMode}
                 onPicked={() => setPickMode(false)}
               />
+              <div className="catl-card">
+                <h2 className="text-lg font-bold text-catl-primary mb-2">
+                  📅 Édition des tournées
+                </h2>
+                <p className="text-sm text-catl-text">
+                  L&apos;ajout d&apos;arrêts et le calcul des KPIs arrivent en
+                  Phase 2. Le dépôt est verrouillé et prêt à recevoir des
+                  tournées.
+                </p>
+              </div>
+            </>
+          ) : (
+            // Avant lock : formulaire gauche + carte droite
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 items-start">
+              <div className="lg:col-span-3">
+                <DepotForm
+                  onRequestMapPick={() => setPickMode((m) => !m)}
+                  mapPickMode={pickMode}
+                />
+              </div>
+              <div className="lg:col-span-2 lg:sticky lg:top-5">
+                <SimulatorMap
+                  pickMode={pickMode}
+                  onPicked={() => setPickMode(false)}
+                />
+              </div>
             </div>
-          </div>
+          )}
         </form>
-
-        {state.depotLocked && (
-          <div className="catl-card">
-            <h2 className="text-lg font-bold text-catl-primary mb-2">
-              📅 Édition des tournées
-            </h2>
-            <p className="text-sm text-catl-text">
-              L&apos;ajout d&apos;arrêts et le calcul des KPIs arrivent en Phase
-              2. Le dépôt est verrouillé et prêt à recevoir des tournées.
-            </p>
-          </div>
-        )}
       </div>
     </FormProvider>
   );
