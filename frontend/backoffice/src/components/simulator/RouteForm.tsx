@@ -13,12 +13,12 @@ import {
   useVehicles,
 } from "@/lib/simulator/api-hooks";
 import {
+  dayOfWeekFromIsoDate,
   routeFormSchema,
   type RouteFormInput,
   type RouteFormValues,
 } from "@/lib/simulator/schemas";
 import {
-  DAY_LABELS,
   VEHICLE_TYPE_LABELS,
   type ApiRoute,
   type DayOfWeek,
@@ -37,7 +37,6 @@ function toForm(r: ApiRoute | null | undefined): RouteFormValues {
   return {
     name: r?.name ?? "",
     vehicleId: r?.vehicleId ?? "",
-    dayOfWeek: r?.dayOfWeek ?? "",
     scheduledDate: r?.scheduledDate ?? "",
   };
 }
@@ -63,10 +62,14 @@ export function RouteForm({ producerId, route, onSaved, onCancel }: Props) {
   const vehicles = vehiclesPage?.items ?? [];
 
   const onSubmit = handleSubmit(async (values) => {
+    // Le dayOfWeek est dérivé de la date — un seul champ à saisir côté UI.
+    const dayOfWeek: DayOfWeek | undefined = values.scheduledDate
+      ? (dayOfWeekFromIsoDate(values.scheduledDate) ?? undefined)
+      : undefined;
     const payload = {
       name: values.name,
       vehicleId: values.vehicleId ? values.vehicleId : undefined,
-      dayOfWeek: (values.dayOfWeek || undefined) as DayOfWeek | undefined,
+      dayOfWeek,
       scheduledDate: values.scheduledDate ? values.scheduledDate : undefined,
     };
     try {
@@ -112,16 +115,6 @@ export function RouteForm({ producerId, route, onSaved, onCancel }: Props) {
                 <option key={v.id} value={v.id}>
                   {VEHICLE_TYPE_LABELS[v.type]}
                   {v.refrigerated ? " (réfrigéré)" : ""}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Jour de la semaine">
-            <Select {...register("dayOfWeek")}>
-              <option value="">— Aucun —</option>
-              {(Object.keys(DAY_LABELS) as DayOfWeek[]).map((d) => (
-                <option key={d} value={d}>
-                  {DAY_LABELS[d]}
                 </option>
               ))}
             </Select>

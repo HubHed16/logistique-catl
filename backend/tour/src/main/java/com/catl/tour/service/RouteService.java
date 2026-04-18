@@ -60,17 +60,29 @@ public class RouteService {
 
     @Transactional
     public Route update(UUID id, RouteUpdate input) {
-        String status = routeRepository.currentStatus(id);
-        if (status == null) {
-            throw new NotFoundException("Route", id);
-        }
-        if ("validated".equals(status) || "completed".equals(status)) {
-            throw new ApiException(HttpStatus.CONFLICT, "ROUTE_LOCKED",
-                    "Route is %s and cannot be modified".formatted(status));
-        }
+        assertMutable(id);
         routeRepository.update(id, input);
         return routeRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Route", id));
+    }
+
+    // Règle métier : un trajet `validated` reste éditable tant qu'on n'est pas
+    // le jour même (scheduled_date). `completed` et `cancelled` sont terminaux.
+    void assertMutable(UUID id) {
+        Route route = routeRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Route", id));
+        String status = route.getStatus() != null ? route.getStatus().getValue() : null;
+        if ("completed".equals(status) || "cancelled".equals(status)) {
+            throw new ApiException(HttpStatus.CONFLICT, "ROUTE_LOCKED",
+                    "Route is %s and cannot be modified".formatted(status));
+        }
+        if ("validated".equals(status)) {
+            LocalDate scheduled = route.getScheduledDate();
+            if (scheduled != null && scheduled.equals(LocalDate.now())) {
+                throw new ApiException(HttpStatus.CONFLICT, "ROUTE_LOCKED",
+                        "Route is scheduled today and cannot be modified");
+            }
+        }
     }
 
     @Transactional
@@ -110,10 +122,9 @@ public class RouteService {
 
     @Transactional
     public Route validate(UUID id) {
-        String status = routeRepository.currentStatus(id);
-        if (status == null) {
-            throw new NotFoundException("Route", id);
-        }
+        Route route = routeRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Route", id));
+        String status = route.getStatus() != null ? route.getStatus().getValue() : null;
         if (!"draft".equals(status)) {
             throw new ApiException(HttpStatus.CONFLICT, "ROUTE_NOT_DRAFT",
                     "Only draft routes can be validated (current status: %s)".formatted(status));
@@ -121,6 +132,10 @@ public class RouteService {
         if (routeRepository.countStops(id) == 0) {
             throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "ROUTE_EMPTY",
                     "Route has no stops");
+        }
+        if (route.getVehicleId() == null) {
+            throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "ROUTE_NO_VEHICLE",
+                    "Route must have a vehicle before it can be validated");
         }
         routeRepository.setStatus(id, RouteStatus.VALIDATED);
         return routeRepository.findById(id)

@@ -113,8 +113,17 @@ export function RouteEditor({ producerId }: { producerId: string }) {
   const vehicle: Vehicle | null = route.vehicleId
     ? (vehiclesPage?.items ?? []).find((v) => v.id === route.vehicleId) ?? null
     : null;
-  const isLocked = route.status !== "draft";
+  // Un trajet validé reste éditable tant qu'on n'est pas le jour même. Les
+  // statuts terminaux (completed/cancelled) verrouillent tout.
+  const isTerminal =
+    route.status === "completed" || route.status === "cancelled";
+  const todayIso = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD local
+  const isScheduledToday =
+    !!route.scheduledDate && route.scheduledDate === todayIso;
+  const isValidated = route.status === "validated";
+  const isLocked = isTerminal || (isValidated && isScheduledToday);
   const stopsCount = route.stops?.length ?? 0;
+  const hasVehicle = !!route.vehicleId;
 
   return (
     <section className="space-y-3">
@@ -144,7 +153,7 @@ export function RouteEditor({ producerId }: { producerId: string }) {
               Éditer
             </Button>
           )}
-          {!isLocked && (
+          {!isLocked && route.status === "draft" && (
             <Button
               variant="ghost"
               size="sm"
@@ -171,16 +180,20 @@ export function RouteEditor({ producerId }: { producerId: string }) {
               Optimiser
             </Button>
           )}
-          {!isLocked && (
+          {!isLocked && route.status === "draft" && (
             <Button
               size="sm"
               leftIcon={<CheckCircle2 className="w-3.5 h-3.5" />}
-              disabled={stopsCount === 0 || validateRoute.isPending}
+              disabled={
+                stopsCount === 0 || !hasVehicle || validateRoute.isPending
+              }
               onClick={() => setConfirmValidate(true)}
               title={
                 stopsCount === 0
                   ? "Au moins un arrêt requis pour valider"
-                  : undefined
+                  : !hasVehicle
+                    ? "Un véhicule est requis pour valider"
+                    : undefined
               }
             >
               Valider
@@ -222,10 +235,26 @@ export function RouteEditor({ producerId }: { producerId: string }) {
         <div className="catl-section catl-section--info flex items-start gap-3">
           <Lock className="w-4 h-4 text-catl-info mt-0.5 shrink-0" />
           <div className="text-sm text-catl-text">
-            Ce trajet est <strong>{route.status}</strong> — il est verrouillé.
-            Utilise <strong>Dupliquer</strong> pour reprendre son édition sur
-            une copie en brouillon.
+            {isValidated && isScheduledToday ? (
+              <>
+                Ce trajet est prévu <strong>aujourd&apos;hui</strong> — il est
+                verrouillé. Utilise <strong>Dupliquer</strong> pour repartir
+                d&apos;une copie en brouillon.
+              </>
+            ) : (
+              <>
+                Ce trajet est <strong>{route.status}</strong> — il est
+                verrouillé. Utilise <strong>Dupliquer</strong> pour reprendre
+                son édition sur une copie en brouillon.
+              </>
+            )}
           </div>
+        </div>
+      )}
+      {isValidated && !isLocked && (
+        <div className="catl-section catl-section--info text-sm text-catl-text">
+          Trajet <strong>validé</strong> — encore modifiable jusqu&apos;au jour
+          du départ.
         </div>
       )}
 
@@ -319,9 +348,8 @@ export function RouteEditor({ producerId }: { producerId: string }) {
         title="Valider ce trajet ?"
         description={
           <span>
-            Une fois validé, le trajet sera <strong>verrouillé</strong> et ne
-            pourra plus être modifié (il faudra le dupliquer pour l&apos;éditer
-            à nouveau).
+            Une fois validé, le trajet restera modifiable jusqu&apos;au jour du
+            départ, puis sera automatiquement <strong>verrouillé</strong>.
           </span>
         }
         variant="primary"

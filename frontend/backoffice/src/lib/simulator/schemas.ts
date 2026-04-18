@@ -72,10 +72,26 @@ export type VehicleFormInput = z.input<typeof vehicleFormSchema>;
 export type VehicleFormValues = z.output<typeof vehicleFormSchema>;
 
 // ─── Route ────────────────────────────────────────────────────────────────
+// Dérive le jour de la semaine d'une date ISO (YYYY-MM-DD) sans dépendre du
+// fuseau local (parse manuel pour éviter les décalages UTC de `new Date`).
+export function dayOfWeekFromIsoDate(
+  iso: string,
+): (typeof DAYS_OF_WEEK)[number] | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!m) return null;
+  const [, y, mo, d] = m;
+  const dt = new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d)));
+  if (Number.isNaN(dt.getTime())) return null;
+  // getUTCDay: 0=dimanche..6=samedi → remappe lundi=0.
+  const idx = (dt.getUTCDay() + 6) % 7;
+  return DAYS_OF_WEEK[idx] ?? null;
+}
+
+// Le dayOfWeek est désormais dérivé de la date côté client avant envoi — pas
+// de champ indépendant dans le formulaire.
 export const routeFormSchema = z.object({
   name: z.string().trim().min(2, "Au moins 2 caractères").max(120),
   vehicleId: z.string().uuid().optional().or(z.literal("")),
-  dayOfWeek: z.enum(DAYS_OF_WEEK).optional().or(z.literal("")),
   scheduledDate: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Format YYYY-MM-DD")
