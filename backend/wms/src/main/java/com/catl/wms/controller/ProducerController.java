@@ -24,42 +24,44 @@ public class ProducerController {
 
     private final ProducerService producerService;
 
-    @GetMapping("/getAll")
+    @GetMapping
     @Operation(summary = "Retrieve all producers with pagination")
-    public ResponseEntity<List<ProducerDto>> getAllProducer(
+    public ResponseEntity<List<ProducerDto>> getAllProducers(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
             @RequestParam(defaultValue = "20") @Min(1) int size) {
 
-        var pageRequest = PageRequest.of(page, size);
-        Page<ProducerDto> producer = producerService.getAllProducer(pageRequest);
+        PageRequest pageRequest = PageRequest.of(page, size);
+        Page<ProducerDto> producers = producerService.getAllProducer(pageRequest);
 
-        if (producer.isEmpty()) {
+        if (producers.isEmpty()) {
             return ResponseEntity.noContent().build();
         }
-        return ResponseEntity.ok(producer.getContent());
+
+        return ResponseEntity.ok(producers.getContent());
     }
 
-    @GetMapping("getProducerById")
+    @GetMapping("/{id}")
     @Operation(summary = "Retrieve a producer by its ID")
-    public ResponseEntity<Optional<ProducerDto>> getProducerById(@RequestParam UUID id) {
-        var producer = producerService.getProducerById(id);
-        if (producer.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(producer);
+    public ResponseEntity<ProducerDto> getProducerById(@PathVariable("id") UUID producerId) {
+        return producerService.getProducerById(producerId)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    @PatchMapping("/{id}")
+    @Operation(summary = "Partially update a producer")
+    public ResponseEntity<ProducerDto> patchProducer(
+            @PathVariable("id") UUID producerId,
+            @RequestBody ProducerDto producerDto) {
 
-    @PostMapping("/producers")
-    public ResponseEntity<ProducerDto> saveOrUpdateProducer(@RequestParam(required = false) UUID producerId, @RequestBody ProducerDto producerDto) {
         ProducerDto result = producerService.saveOrUpdateProducer(producerId, producerDto);
         return ResponseEntity.ok(result);
     }
 
-    @DeleteMapping("/producers")
-    public ResponseEntity<Void> deleteProducer(@RequestParam UUID producerId) {
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Delete a producer by its ID")
+    public ResponseEntity<Void> deleteProducer(@PathVariable("id") UUID producerId) {
         producerService.deleteProducer(producerId);
         return ResponseEntity.noContent().build();
     }
 }
-

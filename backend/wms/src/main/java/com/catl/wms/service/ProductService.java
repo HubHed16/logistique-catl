@@ -56,7 +56,7 @@ public class ProductService {
         return productMapper.getDto(savedProduct);
     }
 
-    public void deleteProducer(UUID productId) {
+    public void deleteProduct(UUID productId) {
         var product = productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Product not found with id: " + productId));
         productRepository.delete(product);
