@@ -11,34 +11,6 @@ volumes:
   zookeeper-data:
 
 services:
-
-  # ─── Zookeeper ────────────────────────────────────────────────────────────
-  zookeeper:
-    image: quay.io/debezium/zookeeper:2.7
-    container_name: zookeeper
-    networks: [wms-net]
-    ports:
-      - "2181:2181"
-    volumes:
-      - zookeeper-data:/zookeeper/data
-
-  # ─── Kafka ────────────────────────────────────────────────────────────────
-  kafka:
-    image: quay.io/debezium/kafka:2.7
-    container_name: kafka
-    networks: [wms-net]
-    depends_on: [zookeeper]
-    ports:
-      - "9092:9092"
-    environment:
-      ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_LOG_RETENTION_HOURS: "168"
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-    volumes:
-      - kafka-data:/kafka/data
-
   # ─── PostgreSQL (source) ──────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
@@ -50,20 +22,8 @@ services:
       POSTGRES_DB: wms
       POSTGRES_USER: wms_user
       POSTGRES_PASSWORD: wms_password
-    # Activer la réplication logique pour Debezium
-    command:
-      - postgres
-      - -c
-      - wal_level=logical
-      - -c
-      - max_replication_slots=10
-      - -c
-      - max_wal_senders=10
-      - -c
-      - wal_keep_size=1024
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U wms_user -d wms"]
       interval: 10s
@@ -89,49 +49,3 @@ services:
       timeout: 5s
       retries: 15
       start_period: 30s
-
-  # ─── Kafka Connect (Debezium PostgreSQL source + SQL Server sink) ────────
-  connect:
-    image: quay.io/debezium/connect:2.7
-    container_name: kafka-connect
-    networks: [wms-net]
-    depends_on:
-      kafka:
-        condition: service_started
-      postgres:
-        condition: service_healthy
-      sqlserver:
-        condition: service_healthy
-    ports:
-      - "8083:8083"
-    environment:
-      BOOTSTRAP_SERVERS: kafka:9092
-      GROUP_ID: wms-connect-group
-      CONFIG_STORAGE_TOPIC: connect-configs
-      OFFSET_STORAGE_TOPIC: connect-offsets
-      STATUS_STORAGE_TOPIC: connect-statuses
-      CONFIG_STORAGE_REPLICATION_FACTOR: "1"
-      OFFSET_STORAGE_REPLICATION_FACTOR: "1"
-      STATUS_STORAGE_REPLICATION_FACTOR: "1"
-      CONNECT_PLUGIN_PATH: /kafka/connect
-      KAFKA_OPTS: "-Xms512m -Xmx1g"
-    healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8083/connectors || exit 1"]
-      interval: 15s
-      timeout: 10s
-      retries: 12
-      start_period: 60s
-
-  # ─── Kafka UI (monitoring) ────────────────────────────────────────────────
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    container_name: kafka-ui
-    networks: [wms-net]
-    depends_on: [kafka, connect]
-    ports:
-      - "8080:8080"
-    environment:
-      KAFKA_CLUSTERS_0_NAME: wms-cluster
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
-      KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: debezium
-      KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://connect:8083
