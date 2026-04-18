@@ -10,10 +10,6 @@ import java.util.List;
 import java.util.UUID;
 
 public interface OrderRepository extends JpaRepository<Order, UUID> {
-
-    List<Order> findByCooperativeId(UUID cooperativeId);
-    List<Order> findByStatus(Order.OrderStatus status);
-
     @Query("""
         SELECT o FROM Order o
         WHERE (:status IS NULL OR o.status = :status)

@@ -12,12 +12,4 @@ public class OrderRequest {
     @NotNull(message = "Cooperative ID is required")
     private UUID cooperativeId;
 
-    @NotNull(message = "Client name is required")
-    private String clientName;
-
-    @NotNull(message = "Client type is required")
-    private Order.ClientType clientType;
-
-    @NotNull(message = "Channel is required")
-    private Order.OrderChannel channel;
 }
