@@ -1,0 +1,93 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: 020-seed-optimization-demo
+      author: ai-assistant
+      context: dev
+      changes:
+        - sql:
+            splitStatements: true
+            sql: |
+              -- ──────────────────────────────────────────────────────────────
+              -- Seed data for testing DailyRoutingOptimizer (xDock pooling)
+              -- 3 producers across Belgium + 1 coop hub in Gembloux
+              -- Stops clustered in Leuven (north) & Charleroi (south)
+              -- Date: 2026-04-20 (Monday)
+              -- ──────────────────────────────────────────────────────────────
+
+              -- Infrastructures: each producer has one depot + 1 dedicated coop hub
+              INSERT INTO infrastructure
+                (id, producer_id, dry_surface_m2, fresh_surface_m2, frozen_surface_m2, prep_surface_m2, depot_latitude, depot_longitude)
+              VALUES
+                ('aaaa1111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', 200, 100,  50, 30, 50.467400, 4.872000),  -- Producer A: Namur
+                ('bbbb2222-2222-2222-2222-222222222222', '22222222-2222-2222-2222-222222222222', 180,  80,  40, 25, 50.632600, 5.579700),  -- Producer B: Liège
+                ('cccc3333-3333-3333-3333-333333333333', '33333333-3333-3333-3333-333333333333', 220, 110,  60, 35, 50.850300, 4.351700),  -- Producer C: Bruxelles
+                ('9999eeee-eeee-eeee-eeee-eeeeeeeeeeee', '99999999-9999-9999-9999-999999999999', 500, 250, 120, 90, 50.559600, 4.691300); -- Coop hub: Gembloux
+
+              -- Vehicles (one per producer, similar cost profile)
+              INSERT INTO vehicle
+                (id, producer_id, type, fuel, consumption_l_100km, fuel_price, amortization_eur_km, refrigerated, driver_type, hourly_cost, prep_time_min, loading_time_min)
+              VALUES
+                ('11aa0000-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'van', 'diesel', 10.0, 1.75, 0.050, false, 'owner', 25.0, 15, 20),
+                ('22aa0000-0000-0000-0000-000000000002', '22222222-2222-2222-2222-222222222222', 'van', 'diesel', 10.5, 1.75, 0.055, false, 'owner', 25.0, 15, 20),
+                ('33aa0000-0000-0000-0000-000000000003', '33333333-3333-3333-3333-333333333333', 'van', 'diesel',  9.5, 1.75, 0.048, false, 'owner', 25.0, 15, 20);
+
+              -- Customers: 5 in Leuven area, 5 in Charleroi area
+              INSERT INTO customer (id, producer_id, name, type, address, latitude, longitude) VALUES
+                ('c1110000-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'Resto Leuven Centre',        'restaurant',   'Brusselsestraat 1, Leuven',           50.879800, 4.700500),
+                ('c2220000-0000-0000-0000-000000000002', '22222222-2222-2222-2222-222222222222', 'École St-Pierre Leuven',     'school',       'Tiensestraat 12, Leuven',             50.876200, 4.706300),
+                ('c3330000-0000-0000-0000-000000000003', '33333333-3333-3333-3333-333333333333', 'Magasin Kessel-Lo',          'shop',         'Diestsestraat 34, Kessel-Lo',         50.883100, 4.714800),
+                ('c4440000-0000-0000-0000-000000000004', '11111111-1111-1111-1111-111111111111', 'Resto Heverlee',             'restaurant',   'Naamsesteenweg 5, Heverlee',          50.865200, 4.695100),
+                ('c5550000-0000-0000-0000-000000000005', '22222222-2222-2222-2222-222222222222', 'CSA Wilsele',                'csa',          'Schapenstraat 8, Wilsele',            50.899400, 4.702900),
+                ('c6660000-0000-0000-0000-000000000006', '11111111-1111-1111-1111-111111111111', 'Bistro Charleroi',           'restaurant',   'Bd Tirou 10, Charleroi',              50.410800, 4.444600),
+                ('c7770000-0000-0000-0000-000000000007', '33333333-3333-3333-3333-333333333333', 'École Marcinelle',           'school',       'Av. P. Pastur, Marcinelle',           50.400200, 4.441500),
+                ('c8880000-0000-0000-0000-000000000008', '22222222-2222-2222-2222-222222222222', 'Shop Gilly',                 'shop',         'Chaussée de Fleurus, Gilly',          50.428900, 4.471300),
+                ('c9990000-0000-0000-0000-000000000009', '11111111-1111-1111-1111-111111111111', 'Resto Mont-sur-Marchienne',  'restaurant',   'Rue de Marcinelle, MsM',              50.396000, 4.419700),
+                ('caaa0000-0000-0000-0000-00000000000a', '33333333-3333-3333-3333-333333333333', 'Pickup Châtelet',            'pickup_point', 'Rue des Gaux, Châtelet',              50.405400, 4.524400);
+
+              -- Routes for 2026-04-20 (Monday). Each producer has to hit BOTH zones.
+              INSERT INTO route
+                (id, producer_id, vehicle_id, name, day_of_week, scheduled_date, status, distance_km, duration_min, total_cost, total_revenue, profitability_ratio)
+              VALUES
+                ('11110000-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '11111111-1111-1111-1111-111111111111', '11aa0000-0000-0000-0000-000000000001', 'Tournée A — Nord-Sud',  'monday', '2026-04-20', 'validated', 0, 0, 0, 0, 0),
+                ('22220000-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '22222222-2222-2222-2222-222222222222', '22aa0000-0000-0000-0000-000000000002', 'Tournée B — Mix',       'monday', '2026-04-20', 'validated', 0, 0, 0, 0, 0),
+                ('33330000-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '33333333-3333-3333-3333-333333333333', '33aa0000-0000-0000-0000-000000000003', 'Tournée C — Sud-Nord',  'monday', '2026-04-20', 'validated', 0, 0, 0, 0, 0);
+
+              -- Stops (each row targets a Leuven or Charleroi customer)
+              -- Route A: 2 Leuven (own + Heverlee own) + 2 Charleroi (own + MsM own)
+              INSERT INTO stop
+                (id, route_id, customer_id, sequence, operation, amount_eur, duration_min, latitude, longitude, address)
+              VALUES
+                ('a1110000-0000-0000-0000-000000000001', '11110000-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'c1110000-0000-0000-0000-000000000001', 1, 'delivery', 120, 20, 50.879800, 4.700500, 'Brusselsestraat 1, Leuven'),
+                ('a1110000-0000-0000-0000-000000000002', '11110000-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'c4440000-0000-0000-0000-000000000004', 2, 'delivery',  80, 15, 50.865200, 4.695100, 'Naamsesteenweg 5, Heverlee'),
+                ('a1110000-0000-0000-0000-000000000003', '11110000-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'c6660000-0000-0000-0000-000000000006', 3, 'delivery', 150, 20, 50.410800, 4.444600, 'Bd Tirou 10, Charleroi'),
+                ('a1110000-0000-0000-0000-000000000004', '11110000-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'c9990000-0000-0000-0000-000000000009', 4, 'delivery', 110, 20, 50.396000, 4.419700, 'Rue de Marcinelle, MsM');
+
+              -- Route B: 2 Leuven + 1 Charleroi
+              INSERT INTO stop
+                (id, route_id, customer_id, sequence, operation, amount_eur, duration_min, latitude, longitude, address)
+              VALUES
+                ('b2220000-0000-0000-0000-000000000001', '22220000-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'c2220000-0000-0000-0000-000000000002', 1, 'delivery',  90, 15, 50.876200, 4.706300, 'Tiensestraat 12, Leuven'),
+                ('b2220000-0000-0000-0000-000000000002', '22220000-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'c5550000-0000-0000-0000-000000000005', 2, 'delivery', 100, 20, 50.899400, 4.702900, 'Schapenstraat 8, Wilsele'),
+                ('b2220000-0000-0000-0000-000000000003', '22220000-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'c8880000-0000-0000-0000-000000000008', 3, 'delivery',  70, 15, 50.428900, 4.471300, 'Chaussée de Fleurus, Gilly');
+
+              -- Route C: 2 Charleroi + 1 Leuven
+              INSERT INTO stop
+                (id, route_id, customer_id, sequence, operation, amount_eur, duration_min, latitude, longitude, address)
+              VALUES
+                ('cccc0000-0000-0000-0000-000000000001', '33330000-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'c7770000-0000-0000-0000-000000000007', 1, 'delivery', 130, 20, 50.400200, 4.441500, 'Av. P. Pastur, Marcinelle'),
+                ('cccc0000-0000-0000-0000-000000000002', '33330000-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'caaa0000-0000-0000-0000-00000000000a', 2, 'delivery',  95, 15, 50.405400, 4.524400, 'Rue des Gaux, Châtelet'),
+                ('cccc0000-0000-0000-0000-000000000003', '33330000-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'c3330000-0000-0000-0000-000000000003', 3, 'delivery', 110, 15, 50.883100, 4.714800, 'Diestsestraat 34, Kessel-Lo');
+
+              -- Stop items (product_id is a dummy UUID — product table was dropped, column still NOT NULL)
+              INSERT INTO stop_item (id, stop_id, product_id, quantity, unit_price) VALUES
+                ('f1110000-0000-0000-0000-000000000001', 'a1110000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 50.0, 2.40),
+                ('f1110000-0000-0000-0000-000000000002', 'a1110000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 30.0, 2.67),
+                ('f1110000-0000-0000-0000-000000000003', 'a1110000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000001', 80.0, 1.87),
+                ('f1110000-0000-0000-0000-000000000004', 'a1110000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000001', 60.0, 1.83),
+                ('f2220000-0000-0000-0000-000000000001', 'b2220000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002', 40.0, 2.25),
+                ('f2220000-0000-0000-0000-000000000002', 'b2220000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000002', 55.0, 1.82),
+                ('f2220000-0000-0000-0000-000000000003', 'b2220000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000002', 35.0, 2.00),
+                ('f3330000-0000-0000-0000-000000000001', 'cccc0000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000003', 70.0, 1.86),
+                ('f3330000-0000-0000-0000-000000000002', 'cccc0000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000003', 50.0, 1.90),
+                ('f3330000-0000-0000-0000-000000000003', 'cccc0000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000003', 65.0, 1.69);

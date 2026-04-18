@@ -36,6 +36,8 @@ tags:
     description: KPIs and aggregated metrics
   - name: Export
     description: Sharing and export endpoints
+  - name: Optimization
+    description: Operational optimization (daily routing, hub selection)
 
 # ─────────────────────────────────────────────────────────────
 # PATHS
@@ -681,6 +683,32 @@ paths:
             application/gpx+xml:
               schema: { type: string, format: binary }
 
+  # ── Optimization ─────────────────────────────────────────
+  /optimization/daily-routing:
+    post:
+      tags: [Optimization]
+      summary: Optimize direct-vs-hub assignment for a producer's daily deliveries
+      description: |
+        Solves a MILP that assigns each planned delivery stop (for the given
+        producer and date) either to a direct delivery by the producer, or to
+        transit through one of the coop-available hubs for xDock last-mile.
+        Minimizes the total daily cost including producer fleet cost, hub
+        fleet cost, handling fees and the detour cost of visiting a hub.
+      operationId: optimizeDailyRouting
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OptimizationInput' }
+      responses:
+        '200':
+          description: Optimization result
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OptimizationResult' }
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
 # ─────────────────────────────────────────────────────────────
 # COMPONENTS
 # ─────────────────────────────────────────────────────────────
@@ -747,6 +775,11 @@ components:
           schema: { $ref: '#/components/schemas/Error' }
     Conflict:
       description: Conflict with current resource state
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    UnprocessableEntity:
+      description: Request rejected due to business rule violation
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
@@ -1196,3 +1229,127 @@ components:
         totalCost:          { type: number, format: double }
         totalRevenue:       { type: number, format: double }
         averageRatio:       { type: number, format: double }
+
+    # ── Optimization ──────────────────────────────────────
+    OptimizationInput:
+      type: object
+      required: [date]
+      properties:
+        date:
+          type: string
+          format: date
+          description: Scheduled date of the routes to consider (all producers)
+        handlingFeePerUnit:
+          type: number
+          format: double
+          default: 0
+          description: Coop handling fee charged per unit of volume transiting through a hub
+        openingFee:
+          type: number
+          format: double
+          default: 0
+          description: Flat fee applied each time a hub is used in the day
+        maxSolveTimeMs:
+          type: integer
+          format: int64
+          default: 10000
+          minimum: 100
+          description: Solver time budget in milliseconds
+
+    OptimizationResult:
+      type: object
+      required:
+        - date
+        - solverStatus
+        - stopCount
+        - producerCount
+        - baselineAllDirectCostEur
+        - optimizedCostEur
+        - savingsEur
+        - assignments
+        - transfers
+        - pickingLists
+      properties:
+        date:                     { type: string, format: date }
+        solverStatus:             { type: string, description: "OPTIMAL | FEASIBLE | NO_STOPS | NO_PRODUCER_WITH_DEPOT | NO_HUBS_AVAILABLE" }
+        solveTimeMs:              { type: integer, format: int64 }
+        stopCount:                { type: integer }
+        producerCount:            { type: integer }
+        hubsAvailable:            { type: integer }
+        hubsUsed:                 { type: integer }
+        baselineAllDirectCostEur: { type: number, format: double, description: "Total cost if every producer delivered every stop direct from its own depot" }
+        optimizedCostEur:         { type: number, format: double }
+        savingsEur:               { type: number, format: double, description: "baseline - optimized" }
+        assignments:
+          type: array
+          items: { $ref: '#/components/schemas/OptimizationStopAssignment' }
+        transfers:
+          type: array
+          description: Bulk drops each producer must perform at each used hub
+          items: { $ref: '#/components/schemas/OptimizationProducerHubTransfer' }
+        pickingLists:
+          type: array
+          description: Per-hub last-mile manifest (all producers combined)
+          items: { $ref: '#/components/schemas/OptimizationHubPickingList' }
+
+    OptimizationStopAssignment:
+      type: object
+      required: [stopId, routeId, producerId, sequence, mode, volume, directCostEur]
+      properties:
+        stopId:        { type: string, format: uuid }
+        routeId:       { type: string, format: uuid }
+        producerId:    { type: string, format: uuid }
+        sequence:      { type: integer }
+        mode:
+          type: string
+          enum: [DIRECT, VIA_HUB]
+        hubId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Infrastructure ID of the chosen hub; null if mode=DIRECT
+        volume:        { type: number, format: double }
+        directCostEur: { type: number, format: double }
+        viaHubCostEur:
+          type: number
+          format: double
+          nullable: true
+          description: Cost of the chosen hub last-mile; null if mode=DIRECT
+
+    OptimizationProducerHubTransfer:
+      type: object
+      required: [producerId, hubId, detourKm, detourCostEur, totalVolume, stopIds]
+      properties:
+        producerId:    { type: string, format: uuid }
+        hubId:         { type: string, format: uuid }
+        detourKm:      { type: number, format: double, description: "Round-trip detour depot → hub → depot" }
+        detourCostEur: { type: number, format: double }
+        totalVolume:   { type: number, format: double }
+        stopIds:
+          type: array
+          items: { type: string, format: uuid }
+
+    OptimizationHubPickingList:
+      type: object
+      required:
+        - hubId
+        - hubProducerId
+        - latitude
+        - longitude
+        - stopIds
+        - contributingProducers
+        - totalVolume
+        - openingCostEur
+      properties:
+        hubId:         { type: string, format: uuid }
+        hubProducerId: { type: string, format: uuid }
+        latitude:      { type: number, format: double }
+        longitude:     { type: number, format: double }
+        stopIds:
+          type: array
+          items: { type: string, format: uuid }
+        contributingProducers:
+          type: array
+          items: { type: string, format: uuid }
+        totalVolume:    { type: number, format: double }
+        openingCostEur: { type: number, format: double }

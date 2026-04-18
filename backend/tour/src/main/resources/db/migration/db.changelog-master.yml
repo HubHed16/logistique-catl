@@ -5,3 +5,5 @@ databaseChangeLog:
       file: db/migration/changelogs/0002-depot-coords.yml
   - include:
       file: db/migration/changelogs/0003-remove-product.yml
+  - include:
+      file: db/migration/changelogs/0004-seed-optimization-demo.yml
