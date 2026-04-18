@@ -1,9 +1,19 @@
-import type { StorageLocation, StorageZone } from "@/lib/types";
+import type {
+  Product,
+  ReceptionRequest,
+  ReceptionResponse,
+  StockItem,
+  StockItemStatus,
+  StorageLocation,
+  StorageZone,
+  StorageZoneType,
+} from "@/lib/types";
 import { mockStore, uid } from "./store";
 
 export type MockHandler = (
   match: RegExpMatchArray,
   body: unknown,
+  url: URL,
 ) => MockHandlerResult | Promise<MockHandlerResult>;
 
 export type MockHandlerResult = {
@@ -17,11 +27,18 @@ type Route = {
   handler: MockHandler;
 };
 
-function withCount(zone: StorageZone, locations: StorageLocation[]): StorageZone {
+function withCount(
+  zone: StorageZone,
+  locations: StorageLocation[],
+): StorageZone {
   return {
     ...zone,
     locationsCount: locations.filter((l) => l.zoneId === zone.id).length,
   };
+}
+
+function isoToday(): string {
+  return new Date().toISOString().slice(0, 10);
 }
 
 const routes: Route[] = [
@@ -41,7 +58,7 @@ const routes: Route[] = [
   {
     method: "POST",
     pattern: /^\/api\/v1\/storage-zones\/?$/,
-    handler: (_, body) => {
+    handler: (_m, body) => {
       const z = body as Omit<StorageZone, "id" | "locationsCount">;
       const created: StorageZone = { ...z, id: uid() };
       mockStore.setData((d) => {
@@ -50,7 +67,7 @@ const routes: Route[] = [
       return { status: 201, body: { ...created, locationsCount: 0 } };
     },
   },
-  // Get zone with locations
+  // Get zone
   {
     method: "GET",
     pattern: /^\/api\/v1\/storage-zones\/([^/]+)\/?$/,
@@ -82,7 +99,7 @@ const routes: Route[] = [
       return { status: 200, body: withCount(updated, data.locations) };
     },
   },
-  // Delete zone (refuse if locations rattached)
+  // Delete zone (refus si emplacements)
   {
     method: "DELETE",
     pattern: /^\/api\/v1\/storage-zones\/([^/]+)\/?$/,
@@ -105,7 +122,7 @@ const routes: Route[] = [
       return { status: 204 };
     },
   },
-  // Locations of a zone
+  // Locations d'une zone
   {
     method: "GET",
     pattern: /^\/api\/v1\/storage-zones\/([^/]+)\/locations\/?$/,
@@ -178,6 +195,159 @@ const routes: Route[] = [
       return { status: 204 };
     },
   },
+  // Locations disponibles par type de stockage (via les zones du bon type)
+  {
+    method: "GET",
+    pattern: /^\/api\/v1\/storage-locations\/available\/?$/,
+    handler: (_m, _body, url) => {
+      const storageType = url.searchParams.get("storageType") as
+        | StorageZoneType
+        | null;
+      const data = mockStore.getData();
+      const matchingZones = storageType
+        ? data.zones.filter((z) => z.type === storageType)
+        : data.zones;
+      const zoneIds = new Set(matchingZones.map((z) => z.id));
+      // exclude locations déjà occupées par un stock_item actif
+      const occupied = new Set(
+        data.stockItems
+          .filter(
+            (si) => si.locationId && si.status === "in_stock",
+          )
+          .map((si) => si.locationId as string),
+      );
+      const available = data.locations.filter(
+        (l) => zoneIds.has(l.zoneId) && !occupied.has(l.id),
+      );
+      return { status: 200, body: available };
+    },
+  },
+  // Producers
+  {
+    method: "GET",
+    pattern: /^\/api\/v1\/producers\/?$/,
+    handler: () => {
+      const data = mockStore.getData();
+      return { status: 200, body: data.producers };
+    },
+  },
+  // Product lookup par EAN
+  {
+    method: "GET",
+    pattern: /^\/api\/v1\/products\/by-ean\/([^/]+)\/?$/,
+    handler: (m) => {
+      const ean = decodeURIComponent(m[1]);
+      const data = mockStore.getData();
+      const product = data.products.find((p) => p.ean === ean);
+      if (!product)
+        return { status: 404, body: { message: "Produit introuvable" } };
+      return { status: 200, body: product };
+    },
+  },
+  // Create product (création minimale à la réception)
+  {
+    method: "POST",
+    pattern: /^\/api\/v1\/products\/?$/,
+    handler: (_m, body) => {
+      const p = body as Omit<Product, "id">;
+      if (!p.producerId) {
+        return {
+          status: 400,
+          body: { message: "Producer requis pour créer un produit." },
+        };
+      }
+      const data = mockStore.getData();
+      if (!data.producers.find((x) => x.id === p.producerId)) {
+        return { status: 400, body: { message: "Producer inconnu." } };
+      }
+      const created: Product = { ...p, id: uid() };
+      mockStore.setData((d) => {
+        d.products.push(created);
+      });
+      return { status: 201, body: created };
+    },
+  },
+  // Reception → crée un stock_item + retourne { id, status, location }
+  {
+    method: "POST",
+    pattern: /^\/api\/v1\/reception\/?$/,
+    handler: (_m, body) => {
+      const req = body as ReceptionRequest;
+      const data = mockStore.getData();
+
+      if (!req.productId) {
+        return {
+          status: 400,
+          body: { message: "productId requis à la réception." },
+        };
+      }
+      const product = data.products.find((p) => p.id === req.productId);
+      if (!product) {
+        return {
+          status: 400,
+          body: { message: "Produit introuvable." },
+        };
+      }
+
+      let status: StockItemStatus;
+      let locationId: string | null = null;
+      if (!req.qualityOk) {
+        status = "destroyed";
+      } else if (req.routing === "xdock") {
+        status = "xdock";
+      } else {
+        status = "in_stock";
+        if (!req.locationId) {
+          return {
+            status: 400,
+            body: {
+              message:
+                "Emplacement requis pour un routage en stock après contrôle qualité OK.",
+            },
+          };
+        }
+        const loc = data.locations.find((l) => l.id === req.locationId);
+        if (!loc) {
+          return { status: 400, body: { message: "Emplacement inconnu." } };
+        }
+        locationId = loc.id;
+      }
+
+      const stockItem: StockItem = {
+        id: uid(),
+        productId: product.id,
+        locationId,
+        cooperativeId: data.cooperativeId,
+        lotNumber: req.lotNumber ?? null,
+        quantity: req.quantity,
+        unit: req.unit,
+        weightDecl: req.weightDecl ?? null,
+        weightAct: req.weightAct ?? null,
+        receptionDate: isoToday(),
+        expirationDate: req.expirationDate ?? null,
+        bestBefore: req.bestBefore ?? null,
+        status,
+        statusReason: req.statusReason ?? null,
+        receptionTemp: req.receptionTemp ?? null,
+      };
+
+      mockStore.setData((d) => {
+        d.stockItems.push(stockItem);
+      });
+
+      const location =
+        stockItem.locationId != null
+          ? data.locations.find((l) => l.id === stockItem.locationId) ?? null
+          : null;
+
+      const response: ReceptionResponse = {
+        stockItemId: stockItem.id,
+        status: stockItem.status,
+        location,
+      };
+      return { status: 201, body: response };
+    },
+  },
 ];
 
 export async function dispatchMock(
@@ -206,7 +376,7 @@ export async function dispatchMock(
   }
   // Petite latence pour rendre le ressenti réaliste
   await new Promise((r) => setTimeout(r, 80));
-  const result = await route.handler(match, body);
+  const result = await route.handler(match, body, url);
   if (result.status === 204 || result.body === undefined) {
     return new Response(null, { status: result.status });
   }
