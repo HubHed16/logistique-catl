@@ -23,6 +23,7 @@ import type {
 } from "./types";
 import {
   WmsApiError,
+  wmsCreateProducer,
   wmsDeleteProducer,
   wmsGetProducer,
   wmsListProducers,
@@ -102,9 +103,6 @@ const customersKey = (producerId: string | undefined, search?: string) =>
 // Les producteurs sont la source de vérité de wms-api. Tour-api ne proxie
 // que le GET list (et il est cassé côté back pour l'instant), donc on
 // tape directement sur /api/wms/producers → cf. simulator/wms-client.ts.
-// wms-api n'expose pas de POST (seul PATCH /{id} fait upsert sur un id
-// existant), donc la création depuis le front est désactivée tant que
-// le back n'ajoute pas d'endpoint.
 
 export function useProducers() {
   return useQuery({
@@ -119,6 +117,16 @@ export function useProducer(id: string | null | undefined) {
     queryKey: producerKey(id ?? undefined),
     queryFn: () => wmsGetProducer(id!),
     enabled: !!id,
+  });
+}
+
+export function useCreateProducer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: ProducerUpdate) => wmsCreateProducer(body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["producers"] });
+    },
   });
 }
 

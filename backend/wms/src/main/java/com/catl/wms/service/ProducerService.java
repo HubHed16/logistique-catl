@@ -41,8 +41,8 @@ public class ProducerService {
            producerDao.setAddress(producerDto.address());
            producerDao.setProvince(producerDto.province());
            producerDao.setBio(producerDto.bio());
-           producerRepository.save(producerDao);
-           return producerDto;
+           Producer saved = producerRepository.save(producerDao);
+           return producerMapper.getDto(saved);
     }
 
     public void deleteProducer(UUID producerId) {
