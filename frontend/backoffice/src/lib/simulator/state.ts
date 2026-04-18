@@ -11,11 +11,15 @@ export type SimulatorState = {
   currentProducerId: string | null;
   /** Route sélectionnée pour édition (phase 2). */
   activeRouteId: string | null;
+  /** Coords capturées par clic-sur-carte, en attente que la sidebar ouvre le formulaire. */
+  pendingStopCoords: { lat: number; lng: number } | null;
 };
 
 export type SimulatorAction =
   | { type: "setCurrentProducer"; producerId: string | null }
-  | { type: "setActiveRoute"; routeId: string | null };
+  | { type: "setActiveRoute"; routeId: string | null }
+  | { type: "setPendingStopCoords"; coords: { lat: number; lng: number } }
+  | { type: "clearPendingStopCoords" };
 
 export function simulatorReducer(
   state: SimulatorState,
@@ -27,9 +31,18 @@ export function simulatorReducer(
         ...state,
         currentProducerId: action.producerId,
         activeRouteId: null,
+        pendingStopCoords: null,
       };
     case "setActiveRoute":
-      return { ...state, activeRouteId: action.routeId };
+      return {
+        ...state,
+        activeRouteId: action.routeId,
+        pendingStopCoords: null,
+      };
+    case "setPendingStopCoords":
+      return { ...state, pendingStopCoords: action.coords };
+    case "clearPendingStopCoords":
+      return { ...state, pendingStopCoords: null };
   }
 }
 
@@ -37,6 +50,7 @@ export function initialState(): SimulatorState {
   return {
     currentProducerId: null,
     activeRouteId: null,
+    pendingStopCoords: null,
   };
 }
 

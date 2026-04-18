@@ -27,6 +27,7 @@ import {
   useProducer,
   useProducerCoords,
   useRoute,
+  useRouteLockStatus,
   useValidateRoute,
   useVehicles,
 } from "@/lib/simulator/api-hooks";
@@ -49,6 +50,7 @@ export function RouteEditor({ producerId }: { producerId: string }) {
   const routeId = state.activeRouteId!;
   const { data: route, isLoading, isError, error } = useRoute(routeId);
   const { data: vehiclesPage } = useVehicles(producerId);
+  const lockStatus = useRouteLockStatus(routeId);
 
   const deleteRoute = useDeleteRoute(producerId);
   const duplicateRoute = useDuplicateRoute(producerId);
@@ -115,13 +117,7 @@ export function RouteEditor({ producerId }: { producerId: string }) {
     : null;
   // Un trajet validé reste éditable tant qu'on n'est pas le jour même. Les
   // statuts terminaux (completed/cancelled) verrouillent tout.
-  const isTerminal =
-    route.status === "completed" || route.status === "cancelled";
-  const todayIso = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD local
-  const isScheduledToday =
-    !!route.scheduledDate && route.scheduledDate === todayIso;
-  const isValidated = route.status === "validated";
-  const isLocked = isTerminal || (isValidated && isScheduledToday);
+  const { isLocked, isValidated, isScheduledToday } = lockStatus;
   const stopsCount = route.stops?.length ?? 0;
   const hasVehicle = !!route.vehicleId;
 

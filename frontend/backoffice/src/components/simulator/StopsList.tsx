@@ -25,7 +25,7 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -35,6 +35,7 @@ import {
   useDeleteStop,
   useReorderStops,
 } from "@/lib/simulator/api-hooks";
+import { useSimulator } from "@/lib/simulator/state";
 import {
   STOP_OPERATION_LABELS,
   type ApiStop,
@@ -48,12 +49,31 @@ type Props = {
 };
 
 export function StopsList({ route, producerId, readOnly }: Props) {
+  const { state, dispatch } = useSimulator();
   const deleteStop = useDeleteStop(route.id, producerId);
   const reorderStops = useReorderStops(route.id, producerId);
 
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<ApiStop | null>(null);
+
+  // Clic-sur-carte : la carte a dispatché des coords, on ouvre le formulaire
+  // pré-rempli. Le trajet peut être verrouillé entre-temps (race) ⇒ on garde
+  // readOnly comme garde final.
+  const pendingCoords = state.pendingStopCoords;
+  useEffect(() => {
+    if (pendingCoords && !readOnly) {
+      setAdding(true);
+      setEditingId(null);
+    }
+  }, [pendingCoords, readOnly]);
+
+  const handleFormClose = () => {
+    setAdding(false);
+    if (state.pendingStopCoords) {
+      dispatch({ type: "clearPendingStopCoords" });
+    }
+  };
 
   // Liste triée par sequence. On alimente un état local pour que le DnD
   // puisse réordonner de façon optimiste avant le retour serveur.
@@ -128,8 +148,9 @@ export function StopsList({ route, producerId, readOnly }: Props) {
         <StopForm
           producerId={producerId}
           routeId={route.id}
-          onSaved={() => setAdding(false)}
-          onCancel={() => setAdding(false)}
+          initialCoords={pendingCoords}
+          onSaved={handleFormClose}
+          onCancel={handleFormClose}
         />
       )}
 
@@ -263,7 +284,10 @@ function SortableStopRow({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-semibold text-catl-primary truncate">
-              {stop.address || "(Adresse non renseignée)"}
+              {stop.address ||
+                (hasCoords
+                  ? `Point carte ${(stop.latitude as number).toFixed(5)}, ${(stop.longitude as number).toFixed(5)}`
+                  : "(Adresse non renseignée)")}
             </span>
             <span className="text-xs px-2 py-0.5 rounded-full bg-catl-bg text-catl-text">
               {STOP_OPERATION_LABELS[stop.operation]}
