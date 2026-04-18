@@ -1,0 +1,1039 @@
+[
+  {
+    "id": 41,
+    "created_at": "2026-03-10T11:19:09.460743+00:00",
+    "nom_producteur": "Ferme AU moulin",
+    "data_json": {
+      "meta": {
+        "date": "2026-03-10T11:19:08.223Z",
+        "version": "V113_CATL_Calculs"
+      },
+      "depot": {
+        "job": [
+          "Maraîchage",
+          "Fruiticulture",
+          "Apiculture",
+          "Aquaculture (poissons)"
+        ],
+        "veh": {
+          "cH": "20",
+          "cons": "5.9",
+          "fuel": "Diesel",
+          "type": "Grand fourgon (6-12m³)",
+          "amort": "0.2",
+          "frigo": false,
+          "price": "1.89",
+          "tLoad": "20",
+          "tPrep": "30",
+          "driver": "Producteur.rice (Soi-même)"
+        },
+        "mail": "",
+        "infra": {
+          "neg": "105",
+          "sec": "40",
+          "prep": "35",
+          "frais": "30"
+        },
+        "pData": {
+          "lat": 50.6865352,
+          "lon": 5.3157843,
+          "addr": "La Ferme au Moulin, Rue au Moulin, Pousset, Remicourt, Waremme, Liège, Wallonie, 4350, Belgique",
+          "name": "Ferme AU moulin"
+        }
+      },
+      "tours": [
+        {
+          "id": "1769433442851",
+          "day": "Lundi",
+          "name": "TOURNEE - Lundi - 1",
+          "stats": {
+            "ca": 850,
+            "cost": 92.37336249999998,
+            "dist": 80.97,
+            "time": 214.45833333333331,
+            "ratio": "10.9"
+          },
+          "stops": [
+            {
+              "id": 1769432814881,
+              "lat": 50.64132984832377,
+              "lon": 5.581467187179015,
+              "vol": 20,
+              "addr": "Boulevard Saucy, Outremeuse, Liège, Wallonie, 4020, Belgique",
+              "euro": 200,
+              "icon": "📦",
+              "time": 15,
+              "client": "Lummi"
+            },
+            {
+              "id": 1769432875353,
+              "lat": 50.64788293953158,
+              "lon": 5.57255154576727,
+              "vol": 20,
+              "addr": "59, Rue Pierreuse, Pierreuse, Liège, Wallonie, 4000, Belgique",
+              "euro": 200,
+              "icon": "📦",
+              "time": 15,
+              "client": "Terr"
+            },
+            {
+              "id": 1769433195897,
+              "lat": 50.698718969149866,
+              "lon": 5.2520447809712465,
+              "vol": 20,
+              "addr": "25;27;29;31;33;35, Rue des Prés, Waremme, Liège, Wallonie, 4300, Belgique",
+              "euro": 50,
+              "icon": "📦",
+              "time": 15,
+              "client": "Waremme"
+            },
+            {
+              "id": 1769433092381,
+              "lat": 50.6808898289724,
+              "lon": 5.45674270360411,
+              "vol": 20,
+              "addr": "28, Rue Louis Germeaux, Hognoul, Awans, Liège, Wallonie, 4340, Belgique",
+              "euro": 200,
+              "icon": "📦",
+              "time": 15,
+              "client": "test"
+            },
+            {
+              "id": 1769433126235,
+              "lat": 50.73877035213928,
+              "lon": 5.607726636157967,
+              "vol": 20,
+              "addr": "12, Rue Libeau, Houtain-Saint-Siméon, Oupeye, Liège, Wallonie, 4682, Belgique",
+              "euro": 200,
+              "icon": "📦",
+              "time": 15,
+              "client": "juprelle"
+            }
+          ]
+        },
+        {
+          "id": "1773140587354",
+          "day": "Mercredi",
+          "name": "TOURNEE - Mercredi",
+          "stats": {
+            "ca": 600,
+            "cost": 91.55729001822223,
+            "dist": 93.23960000000001,
+            "time": 187.53666666666666,
+            "ratio": "15.3"
+          },
+          "stops": [
+            {
+              "id": 1773140392338,
+              "lat": 50.5679216,
+              "lon": 5.1650445,
+              "vol": 0,
+              "addr": "36, Route de l'État, Huccorgne, Wanze, Huy, Liège, Wallonie, 4520, Belgique",
+              "euro": 150,
+              "icon": "📦",
+              "time": 20,
+              "client": "umami boulangerie"
+            },
+            {
+              "id": 1773140482439,
+              "lat": 50.5359063,
+              "lon": 5.2158042,
+              "vol": 0,
+              "addr": "Chaussée de Wavre, Wanze, Huy, Liège, Wallonie, 4520, Belgique",
+              "euro": 150,
+              "icon": "📦",
+              "time": 10,
+              "client": "Champain"
+            },
+            {
+              "id": 1773140552714,
+              "lat": 50.6477538,
+              "lon": 5.5861603,
+              "vol": 0,
+              "addr": "L’Épicerie du Nord, 8, Rue Saint-Léonard, Hors-Château, Saint-Léonard, Liège, Wallonie, 4000, Belgique",
+              "euro": 300,
+              "icon": "📦",
+              "time": 10,
+              "client": "Epicerei DU nord"
+            }
+          ]
+        },
+        {
+          "id": "1773141039360",
+          "day": "Vendredi",
+          "name": "TOURNEE - Vendredi",
+          "stats": {
+            "ca": 1100,
+            "cost": 151.65891938233332,
+            "dist": 183.7199,
+            "time": 283.28499999999997,
+            "ratio": "13.8"
+          },
+          "stops": [
+            {
+              "id": 1773140723473,
+              "lat": 50.4645688,
+              "lon": 4.8665591,
+              "vol": 0,
+              "addr": "Boulangerie Legrand, 18, Rue Emile Cuvelier, Bomel, Namur, Wallonie, 5000, Belgique",
+              "euro": 200,
+              "icon": "📦",
+              "time": 10,
+              "client": "Boulangerie Legrand"
+            },
+            {
+              "id": 1773140784546,
+              "lat": 50.4928509,
+              "lon": 4.7943633,
+              "vol": 0,
+              "addr": "Rue de l'Économie, Parc d'activité économique de Namur-Nord-Rhisnes (Namur), Rhisnes, Namur, Wallonie, 5020, Belgique",
+              "euro": 400,
+              "icon": "📦",
+              "time": 20,
+              "client": "LA fabrique circuit court"
+            },
+            {
+              "id": 1773140928890,
+              "lat": 50.5189318,
+              "lon": 5.2402087,
+              "vol": 0,
+              "addr": "12, Rue des Rôtisseurs, La Sarte, Huy, Liège, Wallonie, 4500, Belgique",
+              "euro": 400,
+              "icon": "📦",
+              "time": 20,
+              "client": "Frit'Huy"
+            },
+            {
+              "id": 1773140993792,
+              "lat": 50.6485243,
+              "lon": 5.6243764,
+              "vol": 0,
+              "addr": "16, Avenue de Jupille, Liège, Wallonie, 4000, Belgique",
+              "euro": 100,
+              "icon": "📦",
+              "time": 20,
+              "client": "Circuits paysans"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": 42,
+    "created_at": "2026-03-25T10:21:54.943745+00:00",
+    "nom_producteur": "Ferme TESTt'\"et\"",
+    "data_json": {
+      "meta": {
+        "date": "2026-03-25T10:21:54.512Z",
+        "version": "V113_CATL_Calculs"
+      },
+      "depot": {
+        "job": [
+          "Céréales panifiables"
+        ],
+        "veh": {
+          "cH": "18",
+          "cons": "8.5",
+          "fuel": "Diesel",
+          "type": "Camion lourd (> 20m³)",
+          "amort": "0.25",
+          "frigo": false,
+          "price": "1.75",
+          "tLoad": "20",
+          "tPrep": "30",
+          "driver": "Producteur.rice (Soi-même)"
+        },
+        "mail": "",
+        "infra": {
+          "neg": "0",
+          "sec": "0",
+          "prep": "0",
+          "frais": "0"
+        },
+        "pData": {
+          "lat": 50.64970719544546,
+          "lon": 5.570186566822431,
+          "addr": "Montagne Sainte-Walburge, Pierreuse, Sainte-Marguerite, Liège, Wallonie, 4000, Belgique",
+          "name": "Ferme TESTt'\"et\""
+        }
+      },
+      "tours": [
+        {
+          "id": "1773653575940",
+          "day": "Lundi",
+          "name": "TOURNEE - Lundi - 2",
+          "stats": {
+            "ca": 450,
+            "cost": 72.713701125,
+            "dist": 59.7911,
+            "time": 162.90666666666667,
+            "ratio": "16.2"
+          },
+          "stops": [
+            {
+              "id": 1773653499671,
+              "lat": 50.745081555537475,
+              "lon": 5.450693936122059,
+              "vol": 0,
+              "addr": "Russon, Tongres-Looz, Tongres, Limbourg, Flandre, 3700, Belgique",
+              "euro": 150,
+              "icon": "📦",
+              "time": 15,
+              "client": "Chez Paul"
+            },
+            {
+              "id": 1773653512111,
+              "lat": 50.65890220187824,
+              "lon": 5.390238603337189,
+              "vol": 0,
+              "addr": "Rue des Perdrix, Noville, Fexhe-le-Haut-Clocher, Waremme, Liège, Wallonie, 4347, Belgique",
+              "euro": 150,
+              "icon": "📦",
+              "time": 15,
+              "client": "Chez Mariette"
+            },
+            {
+              "id": 1773653553674,
+              "lat": 50.59911367223854,
+              "lon": 5.481411924782341,
+              "vol": 0,
+              "addr": "Quai du Halage, Flémalle-Haute, Flémalle, Liège, Wallonie, 4400, Belgique",
+              "euro": 150,
+              "icon": "📦",
+              "time": 15,
+              "client": "Chez JL"
+            }
+          ]
+        },
+        {
+          "id": "1773738463852",
+          "day": "Lundi",
+          "name": "TOURNEE - Lundi - 3",
+          "stats": {
+            "ca": 0,
+            "cost": 90.732382875,
+            "dist": 102.15769999999999,
+            "time": 166.65666666666667,
+            "ratio": 0
+          },
+          "stops": [
+            {
+              "id": 1773738456685,
+              "lat": 50.60828387015089,
+              "lon": 5.115415062507061,
+              "vol": 0,
+              "addr": "67, Rue du Bolland, Ville-en-Hesbaye, Braives, Waremme, Liège, Wallonie, 4260, Belgique",
+              "euro": 0,
+              "icon": "📦",
+              "time": 15,
+              "client": "Arrêt 1"
+            },
+            {
+              "id": 1773738458648,
+              "lat": 50.60974086327511,
+              "lon": 5.497866105035093,
+              "vol": 0,
+              "addr": "",
+              "euro": 0,
+              "icon": "📦",
+              "time": 15,
+              "client": "Arrêt 2"
+            }
+          ]
+        },
+        {
+          "id": "1773823878994",
+          "day": "Lundi",
+          "name": "TOURNEE - Lundi - 4",
+          "stats": {
+            "ca": 0,
+            "cost": 15,
+            "dist": 0,
+            "time": 50,
+            "ratio": 0
+          },
+          "stops": []
+        }
+      ]
+    }
+  },
+  {
+    "id": 43,
+    "created_at": "2026-03-27T10:49:36.286546+00:00",
+    "nom_producteur": "Expo Bread is not dead ",
+    "data_json": {
+      "meta": {
+        "date": "2026-03-27T10:49:36.748Z",
+        "version": "V113_CATL_Calculs"
+      },
+      "depot": {
+        "job": [
+          "Autres"
+        ],
+        "veh": {
+          "cH": "18",
+          "cons": "8.5",
+          "fuel": "Diesel",
+          "type": "Petit utilitaire (< 3m³)",
+          "amort": "0.25",
+          "frigo": false,
+          "price": "1.75",
+          "tLoad": "20",
+          "tPrep": "30",
+          "driver": "Producteur.rice (Soi-même)"
+        },
+        "mail": "anne-sophie@catl.be",
+        "infra": {
+          "neg": "0",
+          "sec": "0",
+          "prep": "0",
+          "frais": "0"
+        },
+        "pData": {
+          "lat": 50.6474121,
+          "lon": 5.5834705,
+          "addr": "Féronstrée 137, Hors-Château, Saint-Léonard, Liège, Wallonie, 4000, Belgique",
+          "name": "Expo Bread is not dead "
+        }
+      },
+      "tours": [
+        {
+          "id": "1774608561102",
+          "day": "Vendredi",
+          "name": "TOURNEE - Vendredi - 1",
+          "stats": {
+            "ca": 0,
+            "cost": 30.826963749999997,
+            "dist": 77.309,
+            "time": 212.15833333333333,
+            "ratio": 0
+          },
+          "stops": [
+            {
+              "id": 1774607743451,
+              "lat": 50.592812,
+              "lon": 5.5759946,
+              "vol": 0,
+              "addr": "469, Rue de la Belle Jardinière, Sart Tilman, Angleur, Liège, Wallonie, 4000, Belgique",
+              "euro": 0,
+              "icon": "📦",
+              "time": 5,
+              "client": "L'écureuil"
+            },
+            {
+              "id": 1774607772075,
+              "lat": 50.6426086,
+              "lon": 5.5854614,
+              "vol": 0,
+              "addr": "Boulangerie Sans Patron, 20, Rue de la Loi, Outremeuse, Liège, Wallonie, 4020, Belgique",
+              "euro": 0,
+              "icon": "📦",
+              "time": 5,
+              "client": "Sans patron"
+            },
+            {
+              "id": 1774607798519,
+              "lat": 50.6461567,
+              "lon": 5.5765899,
+              "vol": 0,
+              "addr": "Rue des Mineurs, Le Péri, Liège, Wallonie, 4000, Belgique",
+              "euro": 0,
+              "icon": "📦",
+              "time": 5,
+              "client": "Saperlipopette"
+            },
+            {
+              "id": 1774607890344,
+              "lat": 50.6508093,
+              "lon": 5.5953836,
+              "vol": 0,
+              "addr": "L'Amicale des Boulangers, 221, Rue Saint-Léonard, Saint-Léonard, Liège, Wallonie, 4000, Belgique",
+              "euro": 0,
+              "icon": "📦",
+              "time": 5,
+              "client": "L'amicale"
+            },
+            {
+              "id": 1774607988214,
+              "lat": 50.6456449,
+              "lon": 5.5881279,
+              "vol": 0,
+              "addr": "Oufticoop, 10, Rue Curtius, Outremeuse, Liège, Wallonie, 4020, Belgique",
+              "euro": 0,
+              "icon": "📦",
+              "time": 5,
+              "client": "Oufticoop"
+            },
+            {
+              "id": 1774608110261,
+              "lat": 50.6395078,
+              "lon": 5.567027,
+              "vol": 0,
+              "addr": "Rue Saint-Gilles, Jonfosse, Centre, Liège, Wallonie, 4000, Belgique",
+              "euro": 0,
+              "icon": "📦",
+              "time": 5,
+              "client": "Epicerie Augustin"
+            },
+            {
+              "id": 1774608141077,
+              "lat": 50.6318459,
+              "lon": 5.5573169,
+              "vol": 0,
+              "addr": "20, Rue du Laveu, Laveu, Liège, Wallonie, 4000, Belgique",
+              "euro": 0,
+              "icon": "📦",
+              "time": 5,
+              "client": "Le temps des Cerises"
+            },
+            {
+              "id": 1774608216416,
+              "lat": 50.6204633,
+              "lon": 5.573489,
+              "vol": 0,
+              "addr": "Place du Général Leman, Fragnée, Guillemins, Liège, Wallonie, 4000, Belgique",
+              "euro": 0,
+              "icon": "📦",
+              "time": 5,
+              "client": "Fond des pans"
+            },
+            {
+              "id": 1774608257004,
+              "lat": 50.6575626,
+              "lon": 5.5984898,
+              "vol": 0,
+              "addr": "160, Boulevard Ernest Solvay, Quartier du Tribouillet, Thier-à-Liège, Liège, Wallonie, 4000, Belgique",
+              "euro": 0,
+              "icon": "📦",
+              "time": 5,
+              "client": "Bicarbonate et topinambour"
+            },
+            {
+              "id": 1774608372255,
+              "lat": 50.6387421,
+              "lon": 5.5862312,
+              "vol": 0,
+              "addr": "149, Rue Puits-en-Sock, Outremeuse, Liège, Wallonie, 4020, Belgique",
+              "euro": 0,
+              "icon": "📦",
+              "time": 5,
+              "client": "Le potiquet"
+            },
+            {
+              "id": 1774608415528,
+              "lat": 50.6130005,
+              "lon": 5.6144473,
+              "vol": 0,
+              "addr": "Chez Lucienne, 17-19, Rue Neuve, Lhoneux, Chênée, Liège, Wallonie, 4032, Belgique",
+              "euro": 0,
+              "icon": "📦",
+              "time": 5,
+              "client": "Chez Lucienne"
+            },
+            {
+              "id": 1774608442141,
+              "lat": 50.6486839,
+              "lon": 5.5891262,
+              "vol": 0,
+              "addr": "160, Rue Saint-Léonard, Hors-Château, Saint-Léonard, Liège, Wallonie, 4000, Belgique",
+              "euro": 0,
+              "icon": "📦",
+              "time": 5,
+              "client": "Epicerie du Nord"
+            },
+            {
+              "id": 1774608467993,
+              "lat": 50.6195193,
+              "lon": 5.5640724,
+              "vol": 0,
+              "addr": "Chez Georgette, 11, Place du Batty, Liège, Wallonie, 4000, Belgique",
+              "euro": 0,
+              "icon": "📦",
+              "time": 5,
+              "client": "Georgette"
+            },
+            {
+              "id": 1774608493022,
+              "lat": 50.638356,
+              "lon": 5.5743783,
+              "vol": 0,
+              "addr": "L'Épicerie Uhoda, 2, Rue des Prémontrés, Centre, Liège, Wallonie, 4000, Belgique",
+              "euro": 0,
+              "icon": "📦",
+              "time": 5,
+              "client": "Uhoda Liège"
+            },
+            {
+              "id": 1774608517883,
+              "lat": 50.591028,
+              "lon": 5.5715525,
+              "vol": 0,
+              "addr": "Uhoda l'Épicerie, 502, Rue de la Belle Jardinière, Sart Tilman, Angleur, Liège, Wallonie, 4000, Belgique",
+              "euro": 0,
+              "icon": "📦",
+              "time": 5,
+              "client": "Uhoda Sart-Tilman"
+            },
+            {
+              "id": 1774608539638,
+              "lat": 50.6174614,
+              "lon": 5.5949038,
+              "vol": 0,
+              "addr": "Uhoda Shop, 80, Quai des Ardennes, Liège, Wallonie, 4020, Belgique",
+              "euro": 0,
+              "icon": "📦",
+              "time": 5,
+              "client": "Uhoda Vennes"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": 44,
+    "created_at": "2026-03-27T11:06:16.980939+00:00",
+    "nom_producteur": "Expo Bread is not dead ",
+    "data_json": {
+      "meta": {
+        "date": "2026-03-27T11:06:18.184Z",
+        "version": "V113_CATL_Calculs"
+      },
+      "depot": {
+        "job": [
+          "Autres"
+        ],
+        "veh": {
+          "cH": "18",
+          "cons": "8.5",
+          "fuel": "Diesel",
+          "type": "Petit utilitaire (< 3m³)",
+          "amort": "0.25",
+          "frigo": false,
+          "price": "1.75",
+          "tLoad": "20",
+          "tPrep": "30",
+          "driver": "Producteur.rice (Soi-même)"
+        },
+        "mail": "anne-sophie@catl.be",
+        "infra": {
+          "neg": "0",
+          "sec": "0",
+          "prep": "0",
+          "frais": "0"
+        },
+        "pData": {
+          "lat": 50.6474121,
+          "lon": 5.5834705,
+          "addr": "Féronstrée 137, Hors-Château, Saint-Léonard, Liège, Wallonie, 4000, Belgique",
+          "name": "Expo Bread is not dead "
+        }
+      },
+      "tours": [
+        {
+          "id": "1774608561102",
+          "day": "Vendredi",
+          "name": "TOURNEE - Vendredi - 1",
+          "stats": {
+            "ca": 0,
+            "cost": 15.544830125,
+            "dist": 38.9839,
+            "time": 151.87166666666667,
+            "ratio": 0
+          },
+          "stops": [
+            {
+              "id": 1774608257004,
+              "lat": 50.6575626,
+              "lon": 5.5984898,
+              "vol": 0,
+              "addr": "160, Boulevard Ernest Solvay, Quartier du Tribouillet, Thier-à-Liège, Liège, Wallonie, 4000, Belgique",
+              "euro": 0,
+              "icon": "📦",
+              "time": 5,
+              "client": "Bicarbonate et topinambour"
+            },
+            {
+              "id": 1774607890344,
+              "lat": 50.6508093,
+              "lon": 5.5953836,
+              "vol": 0,
+              "addr": "L'Amicale des Boulangers, 221, Rue Saint-Léonard, Saint-Léonard, Liège, Wallonie, 4000, Belgique",
+              "euro": 0,
+              "icon": "📦",
+              "time": 5,
+              "client": "L'amicale"
+            },
+            {
+              "id": 1774608442141,
+              "lat": 50.6486839,
+              "lon": 5.5891262,
+              "vol": 0,
+              "addr": "160, Rue Saint-Léonard, Hors-Château, Saint-Léonard, Liège, Wallonie, 4000, Belgique",
+              "euro": 0,
+              "icon": "📦",
+              "time": 5,
+              "client": "Epicerie du Nord"
+            },
+            {
+              "id": 1774607988214,
+              "lat": 50.6456449,
+              "lon": 5.5881279,
+              "vol": 0,
+              "addr": "Oufticoop, 10, Rue Curtius, Outremeuse, Liège, Wallonie, 4020, Belgique",
+              "euro": 0,
+              "icon": "📦",
+              "time": 5,
+              "client": "Oufticoop"
+            },
+            {
+              "id": 1774607772075,
+              "lat": 50.6426086,
+              "lon": 5.5854614,
+              "vol": 0,
+              "addr": "Boulangerie Sans Patron, 20, Rue de la Loi, Outremeuse, Liège, Wallonie, 4020, Belgique",
+              "euro": 0,
+              "icon": "📦",
+              "time": 5,
+              "client": "Sans patron"
+            },
+            {
+              "id": 1774608372255,
+              "lat": 50.6387421,
+              "lon": 5.5862312,
+              "vol": 0,
+              "addr": "149, Rue Puits-en-Sock, Outremeuse, Liège, Wallonie, 4020, Belgique",
+              "euro": 0,
+              "icon": "📦",
+              "time": 5,
+              "client": "Le potiquet"
+            },
+            {
+              "id": 1774608415528,
+              "lat": 50.6130005,
+              "lon": 5.6144473,
+              "vol": 0,
+              "addr": "Chez Lucienne, 17-19, Rue Neuve, Lhoneux, Chênée, Liège, Wallonie, 4032, Belgique",
+              "euro": 0,
+              "icon": "📦",
+              "time": 5,
+              "client": "Chez Lucienne"
+            },
+            {
+              "id": 1774608539638,
+              "lat": 50.6174614,
+              "lon": 5.5949038,
+              "vol": 0,
+              "addr": "Uhoda Shop, 80, Quai des Ardennes, Liège, Wallonie, 4020, Belgique",
+              "euro": 0,
+              "icon": "📦",
+              "time": 5,
+              "client": "Uhoda Vennes"
+            },
+            {
+              "id": 1774607743451,
+              "lat": 50.592812,
+              "lon": 5.5759946,
+              "vol": 0,
+              "addr": "469, Rue de la Belle Jardinière, Sart Tilman, Angleur, Liège, Wallonie, 4000, Belgique",
+              "euro": 0,
+              "icon": "📦",
+              "time": 5,
+              "client": "L'écureuil"
+            },
+            {
+              "id": 1774608517883,
+              "lat": 50.591028,
+              "lon": 5.5715525,
+              "vol": 0,
+              "addr": "Uhoda l'Épicerie, 502, Rue de la Belle Jardinière, Sart Tilman, Angleur, Liège, Wallonie, 4000, Belgique",
+              "euro": 0,
+              "icon": "📦",
+              "time": 5,
+              "client": "Uhoda Sart-Tilman"
+            },
+            {
+              "id": 1774608216416,
+              "lat": 50.6204633,
+              "lon": 5.573489,
+              "vol": 0,
+              "addr": "Place du Général Leman, Fragnée, Guillemins, Liège, Wallonie, 4000, Belgique",
+              "euro": 0,
+              "icon": "📦",
+              "time": 5,
+              "client": "Fond des pans"
+            },
+            {
+              "id": 1774608467993,
+              "lat": 50.6195193,
+              "lon": 5.5640724,
+              "vol": 0,
+              "addr": "Chez Georgette, 11, Place du Batty, Liège, Wallonie, 4000, Belgique",
+              "euro": 0,
+              "icon": "📦",
+              "time": 5,
+              "client": "Georgette"
+            },
+            {
+              "id": 1774608141077,
+              "lat": 50.6318459,
+              "lon": 5.5573169,
+              "vol": 0,
+              "addr": "20, Rue du Laveu, Laveu, Liège, Wallonie, 4000, Belgique",
+              "euro": 0,
+              "icon": "📦",
+              "time": 5,
+              "client": "Le temps des Cerises"
+            },
+            {
+              "id": 1774608110261,
+              "lat": 50.6395078,
+              "lon": 5.567027,
+              "vol": 0,
+              "addr": "Rue Saint-Gilles, Jonfosse, Centre, Liège, Wallonie, 4000, Belgique",
+              "euro": 0,
+              "icon": "📦",
+              "time": 5,
+              "client": "Epicerie Augustin"
+            },
+            {
+              "id": 1774608493022,
+              "lat": 50.638356,
+              "lon": 5.5743783,
+              "vol": 0,
+              "addr": "L'Épicerie Uhoda, 2, Rue des Prémontrés, Centre, Liège, Wallonie, 4000, Belgique",
+              "euro": 0,
+              "icon": "📦",
+              "time": 5,
+              "client": "Uhoda Liège"
+            },
+            {
+              "id": 1774607798519,
+              "lat": 50.6461567,
+              "lon": 5.5765899,
+              "vol": 0,
+              "addr": "Rue des Mineurs, Le Péri, Liège, Wallonie, 4000, Belgique",
+              "euro": 0,
+              "icon": "📦",
+              "time": 5,
+              "client": "Saperlipopette"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": 45,
+    "created_at": "2026-04-09T07:36:44.14549+00:00",
+    "nom_producteur": "Ferme",
+    "data_json": {
+      "meta": {
+        "date": "2026-04-09T07:36:42.360Z",
+        "version": "V113_CATL_Calculs"
+      },
+      "depot": {
+        "job": [],
+        "veh": {
+          "cH": "18",
+          "cons": "8.5",
+          "fuel": "Diesel",
+          "type": "Fourgon compact (3-6m³)",
+          "amort": "0.25",
+          "frigo": false,
+          "price": "1.75",
+          "tLoad": "20",
+          "tPrep": "30",
+          "driver": "Producteur.rice (Soi-même)"
+        },
+        "mail": "",
+        "infra": {
+          "neg": "50",
+          "sec": "60",
+          "prep": "35",
+          "frais": "45"
+        },
+        "pData": {
+          "lat": 50.620339262480414,
+          "lon": 5.7127007309699005,
+          "addr": "46, Rue du Pansery, Micheroux, Soumagne, Liège, Wallonie, 4630, Belgique",
+          "name": "Ferme"
+        }
+      },
+      "tours": [
+        {
+          "id": "1775720143111",
+          "day": "Lundi",
+          "name": "Tournée A",
+          "stats": {
+            "ca": 700,
+            "cost": 108.059793125,
+            "dist": 96.3255,
+            "time": 232.16666666666669,
+            "ratio": "15.4"
+          },
+          "stops": [
+            {
+              "id": 1775719944575,
+              "lat": 50.7207935183992,
+              "lon": 5.665996269808994,
+              "vol": 0,
+              "addr": "Rue Voie de Liège, Hermalle-sous-Argenteau, Oupeye, Liège, Wallonie, 4681, Belgique",
+              "euro": 50,
+              "icon": "📦",
+              "time": 15,
+              "client": "Arrêt 1"
+            },
+            {
+              "id": 1775719957715,
+              "lat": 50.69340570097925,
+              "lon": 5.538327657903,
+              "vol": 0,
+              "addr": "Rue de la Berwinne, Voroux-lez-Liers, Juprelle, Liège, Wallonie, 4450, Belgique",
+              "euro": 50,
+              "icon": "📦",
+              "time": 15,
+              "client": "Arrêt 2"
+            },
+            {
+              "id": 1775719963903,
+              "lat": 50.60240900916447,
+              "lon": 5.4627933255828385,
+              "vol": 0,
+              "addr": "53, Avenue du Fort, Souxhon, Flémalle-Haute, Flémalle, Liège, Wallonie, 4400, Belgique",
+              "euro": 300,
+              "icon": "📦",
+              "time": 15,
+              "client": "Arrêt 3"
+            },
+            {
+              "id": 1775719967168,
+              "lat": 50.55269288032667,
+              "lon": 5.584935508818464,
+              "vol": 0,
+              "addr": "96, Avenue d'Esneux, Tilff, Esneux, Liège, Wallonie, 4130, Belgique",
+              "euro": 300,
+              "icon": "📦",
+              "time": 15,
+              "client": "Arrêt 4"
+            }
+          ]
+        },
+        {
+          "id": "1775720176312",
+          "day": "Mardi",
+          "name": "TOURNEE - Mardi - 1",
+          "stats": {
+            "ca": 90,
+            "cost": 58.34514625,
+            "dist": 41.643,
+            "time": 139.13333333333333,
+            "ratio": "64.8"
+          },
+          "stops": [
+            {
+              "id": 1775720167352,
+              "lat": 50.678172055422976,
+              "lon": 5.819840715414158,
+              "vol": 0,
+              "addr": "MN-6 (PFL1), Miranze, Charneux, Herve, Verviers, Liège, Wallonie, 4650, Belgique",
+              "euro": 45,
+              "icon": "📦",
+              "time": 15,
+              "client": "Arrêt 1"
+            },
+            {
+              "id": 1775720173144,
+              "lat": 50.610910216710295,
+              "lon": 5.802793620614227,
+              "vol": 0,
+              "addr": "22, Rue Sous Le Château, Grand-Rechain, Herve, Verviers, Liège, Wallonie, 4650, Belgique",
+              "euro": 45,
+              "icon": "📦",
+              "time": 15,
+              "client": "Arrêt 2"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": 46,
+    "created_at": "2026-04-18T08:16:49.302524+00:00",
+    "nom_producteur": "Ferme Centrale",
+    "data_json": {
+      "meta": {
+        "date": "2026-04-18T08:16:48.404Z",
+        "version": "V113_CATL_Calculs"
+      },
+      "depot": {
+        "job": [],
+        "veh": {
+          "cH": "14",
+          "cons": "8.5",
+          "fuel": "Diesel",
+          "type": "Fourgon compact (3-6m³)",
+          "amort": "0.25",
+          "frigo": false,
+          "price": "1.75",
+          "tLoad": "10",
+          "tPrep": "45",
+          "driver": "Salarié"
+        },
+        "mail": "",
+        "infra": {
+          "neg": "110",
+          "sec": "75",
+          "prep": "0",
+          "frais": "95"
+        },
+        "pData": {
+          "lat": 50.627050798617326,
+          "lon": 5.474852530718232,
+          "addr": "199, Rue Baron, Hollogne-aux-Pierres, Grâce-Hollogne, Liège, Wallonie, 4460, Belgique",
+          "name": "Ferme Centrale"
+        }
+      },
+      "tours": [
+        {
+          "id": "1776500189781",
+          "day": "Mardi",
+          "name": "TOURNEE - Mardi - 1",
+          "stats": {
+            "ca": 400,
+            "cost": 29.760050694444445,
+            "dist": 11.115,
+            "time": 108.54833333333333,
+            "ratio": "7.4"
+          },
+          "stops": [
+            {
+              "id": 1776500052297,
+              "lat": 50.62334885235926,
+              "lon": 5.507873968122619,
+              "vol": 0,
+              "addr": "Rue du Carrefour, Jemeppe-sur-Meuse, Seraing, Liège, Wallonie, 4101, Belgique",
+              "euro": 200,
+              "icon": "📦",
+              "time": 15,
+              "client": "Temps des Cerises"
+            },
+            {
+              "id": 1776500081496,
+              "lat": 50.63429061492246,
+              "lon": 5.502404935094649,
+              "vol": 0,
+              "addr": "145, Rue Paul Janson, Grâce-Berleur, Grâce-Hollogne, Liège, Wallonie, 4460, Belgique",
+              "euro": 200,
+              "icon": "📦",
+              "time": 15,
+              "client": "Arrêt 2"
+            }
+          ]
+        }
+      ]
+    }
+  }
+]
