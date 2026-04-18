@@ -793,6 +793,8 @@ components:
         freshSurfaceM2:  { type: integer, minimum: 0 }
         frozenSurfaceM2: { type: integer, minimum: 0 }
         prepSurfaceM2:   { type: integer, minimum: 0 }
+        depotLatitude:   { type: number, format: double, minimum: -90,  maximum: 90,  nullable: true }
+        depotLongitude:  { type: number, format: double, minimum: -180, maximum: 180, nullable: true }
         updatedAt:       { type: string, format: date-time, readOnly: true }
 
     InfrastructureUpdate:
@@ -802,6 +804,8 @@ components:
         freshSurfaceM2:  { type: integer, minimum: 0 }
         frozenSurfaceM2: { type: integer, minimum: 0 }
         prepSurfaceM2:   { type: integer, minimum: 0 }
+        depotLatitude:   { type: number, format: double, minimum: -90,  maximum: 90,  nullable: true }
+        depotLongitude:  { type: number, format: double, minimum: -180, maximum: 180, nullable: true }
 
     # ── Vehicle ───────────────────────────────────────────
     Vehicle:

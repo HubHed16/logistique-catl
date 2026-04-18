@@ -22,7 +22,8 @@ class InfrastructureRepository {
 
     private static final String SELECT_COLS = """
             id, producer_id, dry_surface_m2, fresh_surface_m2,
-            frozen_surface_m2, prep_surface_m2, updated_at
+            frozen_surface_m2, prep_surface_m2,
+            depot_latitude, depot_longitude, updated_at
             """;
 
     Optional<Infrastructure> findByProducer(UUID producerId) {
@@ -36,19 +37,23 @@ class InfrastructureRepository {
         jdbc.sql("""
                 INSERT INTO infrastructure (
                     producer_id, dry_surface_m2, fresh_surface_m2,
-                    frozen_surface_m2, prep_surface_m2
+                    frozen_surface_m2, prep_surface_m2,
+                    depot_latitude, depot_longitude
                 ) VALUES (
                     :producerId,
                     COALESCE(:dry, 0),
                     COALESCE(:fresh, 0),
                     COALESCE(:frozen, 0),
-                    COALESCE(:prep, 0)
+                    COALESCE(:prep, 0),
+                    :depotLat, :depotLon
                 )
                 ON CONFLICT (producer_id) DO UPDATE SET
                     dry_surface_m2    = COALESCE(:dry, infrastructure.dry_surface_m2),
                     fresh_surface_m2  = COALESCE(:fresh, infrastructure.fresh_surface_m2),
                     frozen_surface_m2 = COALESCE(:frozen, infrastructure.frozen_surface_m2),
                     prep_surface_m2   = COALESCE(:prep, infrastructure.prep_surface_m2),
+                    depot_latitude    = COALESCE(:depotLat, infrastructure.depot_latitude),
+                    depot_longitude   = COALESCE(:depotLon, infrastructure.depot_longitude),
                     updated_at        = now()
                 """)
                 .param("producerId", producerId)
@@ -56,6 +61,8 @@ class InfrastructureRepository {
                 .param("fresh", input.getFreshSurfaceM2())
                 .param("frozen", input.getFrozenSurfaceM2())
                 .param("prep", input.getPrepSurfaceM2())
+                .param("depotLat", input.getDepotLatitude())
+                .param("depotLon", input.getDepotLongitude())
                 .update();
     }
 
@@ -67,6 +74,8 @@ class InfrastructureRepository {
         i.setFreshSurfaceM2(rs.getInt("fresh_surface_m2"));
         i.setFrozenSurfaceM2(rs.getInt("frozen_surface_m2"));
         i.setPrepSurfaceM2(rs.getInt("prep_surface_m2"));
+        i.setDepotLatitude(rs.getObject("depot_latitude") == null ? null : rs.getBigDecimal("depot_latitude").doubleValue());
+        i.setDepotLongitude(rs.getObject("depot_longitude") == null ? null : rs.getBigDecimal("depot_longitude").doubleValue());
         i.setUpdatedAt(rs.getObject("updated_at", OffsetDateTime.class));
         return i;
     }

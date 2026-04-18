@@ -1,0 +1,24 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: 010-add-depot-coords-to-infrastructure
+      author: hmalaquin
+      changes:
+        - addColumn:
+            tableName: infrastructure
+            columns:
+              - column:
+                  name: depot_latitude
+                  type: numeric(9,6)
+              - column:
+                  name: depot_longitude
+                  type: numeric(9,6)
+        - sql:
+            sql: >
+              ALTER TABLE infrastructure
+              ADD CONSTRAINT chk_infra_depot_coords
+              CHECK (
+                (depot_latitude IS NULL AND depot_longitude IS NULL)
+                OR (depot_latitude BETWEEN -90 AND 90
+                    AND depot_longitude BETWEEN -180 AND 180)
+              );
