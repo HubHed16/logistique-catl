@@ -1,69 +1,127 @@
 package com.catl.wms.service;
 
-import com.catl.wms.dto.reception.QualityControlRequest;
-import com.catl.wms.dto.reception.ReceptionRequest;
-import com.catl.wms.dto.reception.ReceptionResponse;
+import com.catl.wms.dto.reception.*;
 import com.catl.wms.model.*;
 import com.catl.wms.repository.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class ReceptionService {
 
+    private final OrderRepository orderRepository;
+    private final OrderLineRepository orderLineRepository;
     private final StockItemRepository stockItemRepository;
-    private final StockMovementRepository stockMovementRepository;
-    private final ProductRepository productRepository;
-    private final CooperativeRepository cooperativeRepository;
 
+    /**
+     * Réceptionne une livraison correspondant à un Order existant.
+     * Pour chaque OrderLine, crée un StockItem.
+     * Gère les écarts de quantité (reçu vs commandé).
+     */
     @Transactional
-    public ReceptionResponse receiveProduct(ReceptionRequest request) {
+    public ReceptionResponse receiveOrder(ReceptionRequest request) {
 
-        Product product = productRepository.findById(request.getProductId())
+        // 1. Récupérer l'Order
+        Order order = orderRepository.findById(request.getOrderId())
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "Product not found: " + request.getProductId()));
+                        "Order not found: " + request.getOrderId()));
 
-        Cooperative cooperative = cooperativeRepository.findById(request.getCooperativeId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Cooperative not found: " + request.getCooperativeId()));
+        // 2. Vérifier que l'Order est dans un état réceptionnable
+        if (order.getStatus() == Order.OrderStatus.DELIVERED
+                || order.getStatus() == Order.OrderStatus.CANCELLED) {
+            throw new IllegalArgumentException(
+                    "Order cannot be received, current status: " + order.getStatus());
+        }
 
-        StockItem stockItem = StockItem.builder()
-                .product(product)
-                .cooperative(cooperative)
-                .lotNumber(request.getLotNumber())
-                .quantity(request.getQuantity())
-                .unit(request.getUnit())
-                .weightDeclared(request.getWeightDeclared())
-                .receptionTemp(request.getReceptionTemp())
+        List<ReceptionLineResponse> lineResponses = new ArrayList<>();
+        int discrepancyCount = 0;
+
+        // 3. Traiter chaque ligne reçue
+        for (ReceptionLineItem lineItem : request.getLines()) {
+
+            OrderLine orderLine = orderLineRepository.findById(lineItem.getOrderLineId())
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "OrderLine not found: " + lineItem.getOrderLineId()));
+
+            // Vérifier la cohérence : l'OrderLine doit appartenir à l'Order demandé
+            if (!orderLine.getOrder().getId().equals(order.getId())) {
+                throw new IllegalArgumentException(
+                        "OrderLine " + orderLine.getId() + " does not belong to Order " + order.getId());
+            }
+
+            // Calculer l'écart
+            Float qtyOrdered = orderLine.getQuantityOrdered() != null ? orderLine.getQuantityOrdered() : 0f;
+            Float qtyReceived = lineItem.getQuantityReceived();
+            Float discrepancy = qtyReceived - qtyOrdered;
+            boolean hasDiscrepancy = Math.abs(discrepancy) > 0.001f;
+            if (hasDiscrepancy) discrepancyCount++;
+
+            // Créer le StockItem
+            StockItem stockItem = StockItem.builder()
+                    .product(orderLine.getProduct())
+                    .cooperative(order.getCooperative())
+                    .lotNumber(lineItem.getLotNumber())
+                    .quantity(qtyReceived)
+                    .unit(orderLine.getUnit())
+                    .weightActual(lineItem.getWeightActual())
+                    .receptionDate(request.getReceptionDate())
+                    .expirationDate(lineItem.getExpirationDate())
+                    .bestBefore(lineItem.getBestBefore())
+                    .receptionTemp(request.getReceptionTemp())
+                    .status(StockItem.StockStatus.AVAILABLE)
+                    .statusReason(hasDiscrepancy ? "Quantity discrepancy: " + discrepancy : null)
+                    .build();
+
+            stockItem = stockItemRepository.save(stockItem);
+
+            // Lier le StockItem à l'OrderLine + mettre à jour quantityPicked
+            orderLine.setStockItem(stockItem);
+            orderLine.setQuantityPicked(qtyReceived);
+            orderLineRepository.save(orderLine);
+
+            lineResponses.add(ReceptionLineResponse.builder()
+                    .orderLineId(orderLine.getId())
+                    .stockItemId(stockItem.getId())
+                    .productId(orderLine.getProduct().getId())
+                    .productName(orderLine.getProduct().getName())
+                    .quantityOrdered(qtyOrdered)
+                    .quantityReceived(qtyReceived)
+                    .discrepancy(discrepancy)
+                    .hasDiscrepancy(hasDiscrepancy)
+                    .lotNumber(lineItem.getLotNumber())
+                    .status(stockItem.getStatus())
+                    .build());
+        }
+
+        // 4. Mettre à jour le status de l'Order (réception effectuée)
+        order.setStatus(Order.OrderStatus.CONFIRMED);
+        order = orderRepository.save(order);
+
+        return ReceptionResponse.builder()
+                .orderId(order.getId())
+                .orderClientName(order.getClientName())
+                .orderStatus(order.getStatus())
                 .receptionDate(request.getReceptionDate())
-                .expirationDate(request.getExpirationDate())
-                .bestBefore(request.getBestBefore())
-                .status(StockItem.StockStatus.AVAILABLE)
+                .receptionTemp(request.getReceptionTemp())
+                .totalLines(lineResponses.size())
+                .linesWithDiscrepancy(discrepancyCount)
+                .lines(lineResponses)
                 .build();
-
-        stockItem = stockItemRepository.save(stockItem);
-
-        StockMovement movement = StockMovement.builder()
-                .stockItem(stockItem)
-                .type(StockMovement.MovementType.IN)
-                .quantity(request.getQuantity())
-                .timestamp(LocalDateTime.now())
-                .reason("Product reception")
-                .operatorId(request.getOperatorId())
-                .build();
-
-        movement = stockMovementRepository.save(movement);
-
-        return ReceptionResponse.from(stockItem, movement.getId());
     }
 
+    /**
+     * Quality Control sur un StockItem déjà réceptionné.
+     * - OK  → AVAILABLE
+     * - KO  → QUARANTINE
+     */
     @Transactional
-    public ReceptionResponse qualityControl(QualityControlRequest request) {
+    public ReceptionLineResponse qualityControl(QualityControlRequest request) {
 
         StockItem stockItem = stockItemRepository.findById(request.getStockItemId())
                 .orElseThrow(() -> new IllegalArgumentException(
@@ -78,25 +136,25 @@ public class ReceptionService {
             }
             stockItem.setStatus(StockItem.StockStatus.QUARANTINE);
             stockItem.setStatusReason(request.getReason());
-
-            StockMovement lossMovement = StockMovement.builder()
-                    .stockItem(stockItem)
-                    .type(StockMovement.MovementType.LOSS)
-                    .quantity(stockItem.getQuantity())
-                    .timestamp(LocalDateTime.now())
-                    .reason("Quality control failed: " + request.getReason())
-                    .operatorId(request.getOperatorId())
-                    .build();
-
-            stockMovementRepository.save(lossMovement);
         }
 
         stockItem = stockItemRepository.save(stockItem);
-        return ReceptionResponse.from(stockItem, null);
+
+        return ReceptionLineResponse.builder()
+                .stockItemId(stockItem.getId())
+                .productId(stockItem.getProduct().getId())
+                .productName(stockItem.getProduct().getName())
+                .quantityReceived(stockItem.getQuantity())
+                .lotNumber(stockItem.getLotNumber())
+                .status(stockItem.getStatus())
+                .build();
     }
 
+    /**
+     * Scan de confirmation physique (met à jour le poids réel si besoin).
+     */
     @Transactional
-    public ReceptionResponse scanReception(UUID stockItemId, Float weightActual, UUID operatorId) {
+    public ReceptionLineResponse scanReception(UUID stockItemId, Float weightActual, UUID operatorId) {
 
         StockItem stockItem = stockItemRepository.findById(stockItemId)
                 .orElseThrow(() -> new IllegalArgumentException(
@@ -108,16 +166,13 @@ public class ReceptionService {
 
         stockItem = stockItemRepository.save(stockItem);
 
-        StockMovement scanMovement = StockMovement.builder()
-                .stockItem(stockItem)
-                .type(StockMovement.MovementType.IN)
-                .quantity(stockItem.getQuantity())
-                .timestamp(LocalDateTime.now())
-                .reason("Scan reception confirmed")
-                .operatorId(operatorId)
+        return ReceptionLineResponse.builder()
+                .stockItemId(stockItem.getId())
+                .productId(stockItem.getProduct().getId())
+                .productName(stockItem.getProduct().getName())
+                .quantityReceived(stockItem.getQuantity())
+                .lotNumber(stockItem.getLotNumber())
+                .status(stockItem.getStatus())
                 .build();
-
-        StockMovement saved = stockMovementRepository.save(scanMovement);
-        return ReceptionResponse.from(stockItem, saved.getId());
     }
 }

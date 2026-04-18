@@ -8,7 +8,6 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -18,12 +17,10 @@ public class StockPlacementService {
 
     private final StockItemRepository stockItemRepository;
     private final StorageLocationRepository storageLocationRepository;
-    private final StockMovementRepository stockMovementRepository;
 
     /**
-     * Le WMS assigne automatiquement une StorageLocation libre au StockItem.
-     * Logique : on mappe le storage_type du produit vers un ZoneType
-     * et on prend la première location libre dans cette zone.
+     * Le WMS assigne automatiquement une StorageLocation libre au StockItem
+     * selon le storage_type du produit.
      */
     @Transactional
     public PlacementResponse assignLocation(UUID stockItemId, UUID operatorId) {
@@ -61,19 +58,7 @@ public class StockPlacementService {
         stockItem.setLocation(assigned);
         stockItem = stockItemRepository.save(stockItem);
 
-        // Mouvement TRANSFER (du dock vers le rack)
-        StockMovement movement = StockMovement.builder()
-                .stockItem(stockItem)
-                .type(StockMovement.MovementType.TRANSFER)
-                .quantity(stockItem.getQuantity())
-                .timestamp(LocalDateTime.now())
-                .reason("Stock placement assigned to " + assigned.getLabel())
-                .operatorId(operatorId)
-                .build();
-
-        movement = stockMovementRepository.save(movement);
-
-        return PlacementResponse.from(stockItem, movement.getId());
+        return PlacementResponse.from(stockItem);
     }
 
     /**
@@ -92,18 +77,11 @@ public class StockPlacementService {
                     "StockItem has no assigned location. Call /assign first.");
         }
 
-        // Mouvement de confirmation scan
-        StockMovement movement = StockMovement.builder()
-                .stockItem(stockItem)
-                .type(StockMovement.MovementType.TRANSFER)
-                .quantity(stockItem.getQuantity())
-                .timestamp(LocalDateTime.now())
-                .reason("Placement confirmed by scan at " + stockItem.getLocation().getLabel())
-                .operatorId(operatorId)
-                .build();
+        // Le status du StockItem confirme qu'il est bien en rack
+        stockItem.setStatusReason("Placement confirmed at " + stockItem.getLocation().getLabel());
+        stockItem = stockItemRepository.save(stockItem);
 
-        movement = stockMovementRepository.save(movement);
-        return PlacementResponse.from(stockItem, movement.getId());
+        return PlacementResponse.from(stockItem);
     }
 
     /**

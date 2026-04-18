@@ -31,7 +31,6 @@ public class Product {
 
     private String certification;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "producer_id")
-    private Producer producer;
+    @Column(name = "producer_id")
+    private UUID producerId;
 }

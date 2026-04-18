@@ -20,9 +20,8 @@ public class PlacementResponse {
     private UUID zoneId;
     private String zoneName;
     private StockItem.StockStatus status;
-    private UUID movementId;
 
-    public static PlacementResponse from(StockItem item, UUID movementId) {
+    public static PlacementResponse from(StockItem item) {
         return PlacementResponse.builder()
                 .stockItemId(item.getId())
                 .productId(item.getProduct().getId())
@@ -36,7 +35,6 @@ public class PlacementResponse {
                 .zoneName(item.getLocation() != null && item.getLocation().getZone() != null
                         ? item.getLocation().getZone().getName() : null)
                 .status(item.getStatus())
-                .movementId(movementId)
                 .build();
     }
 }
