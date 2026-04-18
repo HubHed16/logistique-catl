@@ -1,7 +1,13 @@
 package com.catl.wms.repository;
 
 import com.catl.wms.model.Cooperative;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+
 import java.util.UUID;
 
-public interface CooperativeRepository extends JpaRepository<Cooperative, UUID> {}
+public interface CooperativeRepository extends JpaRepository<Cooperative, UUID> {
+
+    Page<Cooperative> findByNameContainingIgnoreCase(String name, Pageable pageable);
+}

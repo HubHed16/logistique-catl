@@ -6,23 +6,15 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "\"order\"")
+@Table(name = "orders")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class Order {
 
-    public enum ClientType {
-        INDIVIDUAL, ASSOCIATION, RESTAURANT, SCHOOL, OTHER
-    }
-
-    public enum OrderChannel {
-        ONLINE, PHONE, IN_PERSON
-    }
-
     public enum OrderStatus {
-        PENDING, CONFIRMED, PICKING, SHIPPED, DELIVERED, CANCELLED
+        PENDING, CONFIRMED, PREPARING, SHIPPED, DELIVERED, CANCELLED
     }
 
     @Id
@@ -30,20 +22,10 @@ public class Order {
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "cooperative_id")
+    @JoinColumn(name = "cooperative_id", nullable = false)
     private Cooperative cooperative;
 
-    @Column(name = "client_name")
-    private String clientName;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "client_type")
-    private ClientType clientType;
-
-    @Enumerated(EnumType.STRING)
-    private OrderChannel channel;
-
-    @Column(name = "created_at")
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "shipped_at")
@@ -51,4 +33,11 @@ public class Order {
 
     @Enumerated(EnumType.STRING)
     private OrderStatus status;
+
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+    }
 }

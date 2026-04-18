@@ -56,14 +56,12 @@ public class OrderController {
     @GetMapping("/search")
     public ResponseEntity<List<OrderResponse>> search(
             @RequestParam(required = false) Order.OrderStatus status,
-            @RequestParam(required = false) String clientName,
-            @RequestParam(required = false) Order.ClientType clientType,
             @RequestParam(required = false) UUID cooperativeId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dateFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dateTo) {
 
         return ResponseEntity.ok(orderService.searchOrders(
-                status, clientName, clientType, cooperativeId, dateFrom, dateTo));
+                status, cooperativeId, dateFrom, dateTo));
     }
 
     // ===== STATUS TRANSITIONS =====

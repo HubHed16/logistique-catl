@@ -20,7 +20,7 @@ public class OrderService {
     private final ProductRepository productRepository;
     private final CooperativeRepository cooperativeRepository;
 
-    // ===== CRUD ORDER =====
+
 
     @Transactional
     public OrderResponse createOrder(OrderRequest request) {
@@ -30,9 +30,6 @@ public class OrderService {
 
         Order order = Order.builder()
                 .cooperative(cooperative)
-                .clientName(request.getClientName())
-                .clientType(request.getClientType())
-                .channel(request.getChannel())
                 .status(Order.OrderStatus.PENDING)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -66,13 +63,11 @@ public class OrderService {
 
     public List<OrderResponse> searchOrders(
             Order.OrderStatus status,
-            String clientName,
-            Order.ClientType clientType,
             UUID cooperativeId,
             LocalDateTime dateFrom,
             LocalDateTime dateTo) {
 
-        return orderRepository.findWithFilters(status, clientName, clientType, cooperativeId, dateFrom, dateTo)
+        return orderRepository.findWithFilters(status, cooperativeId, dateFrom, dateTo)
                 .stream()
                 .map(o -> {
                     List<OrderLineResponse> lines = orderLineRepository.findByOrderId(o.getId())
@@ -97,9 +92,6 @@ public class OrderService {
                         "Cooperative not found: " + request.getCooperativeId()));
 
         order.setCooperative(cooperative);
-        order.setClientName(request.getClientName());
-        order.setClientType(request.getClientType());
-        order.setChannel(request.getChannel());
         order = orderRepository.save(order);
 
         List<OrderLineResponse> lines = orderLineRepository.findByOrderId(orderId)
@@ -119,14 +111,14 @@ public class OrderService {
                     "Order cannot be deleted in status: " + order.getStatus());
         }
 
-        // Supprimer d'abord les lignes
+
         List<OrderLine> lines = orderLineRepository.findByOrderId(orderId);
         orderLineRepository.deleteAll(lines);
 
         orderRepository.delete(order);
     }
 
-    // ===== STATUS TRANSITIONS =====
+
 
     @Transactional
     public OrderResponse confirmOrder(UUID orderId) {
@@ -170,7 +162,7 @@ public class OrderService {
         return OrderResponse.from(order, lines);
     }
 
-    // ===== ORDER LINES =====
+
 
     @Transactional
     public OrderLineResponse addLine(UUID orderId, OrderLineRequest request) {

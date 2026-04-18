@@ -1,0 +1,44 @@
+networks:
+  tour-net:
+    driver: bridge
+
+volumes:
+  tour-postgres-data:
+
+services:
+  tour-postgres:
+    image: postgres:16-alpine
+    container_name: tour-postgres
+    networks: [tour-net]
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: tour
+      POSTGRES_USER: tour_user
+      POSTGRES_PASSWORD: tour_password
+    volumes:
+      - tour-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tour_user -d tour"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  tour-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tour-api
+    networks: [tour-net]
+    ports:
+      - "8080:8080"
+    environment:
+      DB_HOST: tour-postgres
+      DB_PORT: 5432
+      DB_NAME: tour
+      DB_USER: tour_user
+      DB_PASSWORD: tour_password
+      SPRING_PROFILES_ACTIVE: dev
+    depends_on:
+      tour-postgres:
+        condition: service_healthy

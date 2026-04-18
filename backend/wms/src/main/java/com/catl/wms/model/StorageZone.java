@@ -13,7 +13,7 @@ import java.util.UUID;
 public class StorageZone {
 
     public enum ZoneType {
-        COLD, DRY, FROZEN, AMBIENT
+        COLD, DRY, FROZEN
     }
 
     @Id

@@ -22,6 +22,8 @@ public class StorageLocation {
     private String rack;
     private String position;
 
+    private Float temperature;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "zone_id")
     private StorageZone zone;
