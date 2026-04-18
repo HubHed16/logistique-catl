@@ -21,7 +21,7 @@ public class WmsClient {
 
     public List<ProducerDto> getProducers(int page, int size) {
         return restClient.get()
-                .uri(uriBuilder -> uriBuilder.path("/producers/getAll")
+                .uri(uriBuilder -> uriBuilder.path("/producers")
                         .queryParam("page", page)
                         .queryParam("size", size)
                         .build())
@@ -31,7 +31,7 @@ public class WmsClient {
 
     public List<ProductDto> getProducts(int page, int size) {
         return restClient.get()
-                .uri(uriBuilder -> uriBuilder.path("/product/getAllProduct")
+                .uri(uriBuilder -> uriBuilder.path("/products")
                         .queryParam("page", page)
                         .queryParam("size", size)
                         .build())
