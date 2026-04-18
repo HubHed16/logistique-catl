@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-catl-primary: #2c3e50;
+  --color-catl-accent: #e67e22;
+  --color-catl-success: #27ae60;
+  --color-catl-danger: #e74c3c;
+  --color-catl-info: #3498db;
+  --color-catl-text: #546e7a;
+  --color-catl-locked: #bdc3c7;
+  --color-catl-bg: #f4f7f9;
+  --color-background: #f4f7f9;
+  --color-foreground: #333333;
+  --font-sans: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+}
+
+.catl-card {
+  background: #ffffff;
+  border-top: 6px solid var(--color-catl-primary);
+  border-radius: 6px;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.catl-card--validated {
+  border-top-color: var(--color-catl-success);
+  background-color: #f6fffa;
+}
+
+.catl-section-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-catl-primary);
+  border-bottom: 1px solid #eee;
+  padding-bottom: 6px;
+  margin-bottom: 12px;
+}
+
+.catl-cta {
+  background: var(--color-catl-accent);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding: 12px 40px;
+  border-radius: 9999px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(230, 126, 34, 0.2);
+  transition: opacity 0.2s ease;
+}
+
+.catl-cta:hover {
+  opacity: 0.9;
+}
+
+.catl-cta:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
