@@ -10,4 +10,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface StorageLocationRepository extends JpaRepository<StorageLocation, UUID> {
+    List<StorageLocation> findByStorageLocationZoneId(UUID zoneId);
+    List<StorageLocation> findByLabel(String label);
+    List<StorageLocation> findByRack(String rack);
 }
