@@ -68,3 +68,152 @@ body {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Simulateur — sections avec accent coloré à gauche */
+.catl-section {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 18px 20px;
+  box-shadow: 0 4px 16px -8px rgba(44, 62, 80, 0.18);
+  border: 1px solid rgba(44, 62, 80, 0.06);
+  border-left: 4px solid var(--color-catl-primary);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.catl-section:hover {
+  box-shadow: 0 10px 28px -10px rgba(44, 62, 80, 0.22);
+}
+.catl-section--primary { border-left-color: var(--color-catl-primary); }
+.catl-section--info    { border-left-color: var(--color-catl-info); }
+.catl-section--success { border-left-color: var(--color-catl-success); }
+.catl-section--accent  { border-left-color: var(--color-catl-accent); }
+
+.catl-section-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background: rgba(44, 62, 80, 0.08);
+  color: var(--color-catl-primary);
+  margin-bottom: 12px;
+}
+.catl-section--info    .catl-section-pill { background: rgba(52,152,219,0.12); color: var(--color-catl-info); }
+.catl-section--success .catl-section-pill { background: rgba(39,174,96,0.12);  color: var(--color-catl-success); }
+.catl-section--accent  .catl-section-pill { background: rgba(230,126,34,0.12); color: var(--color-catl-accent); }
+
+/* Chips multi-select (métiers) */
+.catl-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  border: 1px solid rgba(44, 62, 80, 0.15);
+  background: #ffffff;
+  color: var(--color-catl-text);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  line-height: 1.2;
+}
+.catl-chip:hover {
+  border-color: var(--color-catl-accent);
+  color: var(--color-catl-primary);
+}
+.catl-chip--active {
+  background: var(--color-catl-accent);
+  border-color: var(--color-catl-accent);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px -2px rgba(230, 126, 34, 0.5);
+}
+.catl-chip--active:hover {
+  color: #ffffff;
+}
+
+/* Stepper horizontal (Dépôt → Tournées → Export) */
+.catl-stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px;
+}
+.catl-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 1px solid rgba(44, 62, 80, 0.1);
+  color: var(--color-catl-text);
+  font-size: 0.78rem;
+  font-weight: 600;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+}
+.catl-step--active {
+  background: var(--color-catl-accent);
+  border-color: var(--color-catl-accent);
+  color: #ffffff;
+  box-shadow: 0 6px 18px -6px rgba(230, 126, 34, 0.6);
+}
+.catl-step--done {
+  background: #ffffff;
+  border-color: var(--color-catl-success);
+  color: var(--color-catl-success);
+}
+.catl-step-sep {
+  flex: 1;
+  height: 1px;
+  background: rgba(44, 62, 80, 0.12);
+  min-width: 12px;
+  max-width: 40px;
+}
+
+/* Carte simulateur — conteneur avec bordures douces */
+.catl-map-wrapper {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(44, 62, 80, 0.08);
+  box-shadow: 0 8px 24px -10px rgba(44, 62, 80, 0.2);
+}
+
+/* Simulateur — contrôle custom carte (bouton recentrer / autres) */
+.catl-map-btn {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  color: var(--color-catl-primary);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  background-clip: padding-box;
+}
+.catl-map-btn:hover {
+  background: var(--color-catl-accent);
+  color: #ffffff;
+}
+
+/* Le divIcon Leaflet hérite d'un fond blanc par défaut — on neutralise */
+.catl-depot-marker {
+  background: transparent !important;
+  border: 0 !important;
+}
+
+/* Transitions plus douces pour les cartes CATL */
+.catl-card {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}

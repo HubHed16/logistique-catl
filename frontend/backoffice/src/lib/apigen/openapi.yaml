@@ -1,0 +1,1355 @@
+openapi: 3.0.3
+info:
+  title: CATL Tour API
+  description: |
+    REST API for the CATL logistics route-preparation system.
+    Manages producers, their vehicles, customers, and delivery routes (tours)
+    with their ordered stops. Provides helper services for geocoding, routing,
+    route optimization and KPI reporting.
+  version: 0.1.0
+  contact:
+    name: CATL
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local dev
+  - url: https://api.catl.example/api/v1
+    description: Production
+
+tags:
+  - name: Infrastructure
+    description: Storage and prep surfaces per producer
+  - name: Vehicle
+    description: Vehicles operated by producers
+  - name: Customer
+    description: Delivery / pickup counterparties
+  - name: Route
+    description: Delivery tours (formerly "tournée")
+  - name: Stop
+    description: Ordered stops within a route
+  - name: Product
+    description: Producer product catalogue (optional)
+  - name: StopItem
+    description: Per-stop product lines (optional)
+  - name: Geo
+    description: Geocoding and routing helpers
+  - name: Stats
+    description: KPIs and aggregated metrics
+  - name: Export
+    description: Sharing and export endpoints
+  - name: Optimization
+    description: Operational optimization (daily routing, hub selection)
+
+# ─────────────────────────────────────────────────────────────
+# PATHS
+# ─────────────────────────────────────────────────────────────
+paths:
+
+  # ── Producers ─────────────────────────────────────────────
+  /producers:
+    get:
+      tags: [Producer]
+      summary: List producers
+      operationId: listProducers
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Page of producers
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProducerPage' }
+
+  # ── Infrastructure ────────────────────────────────────────
+  /producers/{producerId}/infrastructure:
+    parameters:
+      - $ref: '#/components/parameters/ProducerId'
+    get:
+      tags: [Infrastructure]
+      summary: Get infrastructure for a producer
+      operationId: getInfrastructure
+      responses:
+        '200':
+          description: Infrastructure record
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Infrastructure' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Infrastructure]
+      summary: Create or update infrastructure (upsert)
+      operationId: upsertInfrastructure
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InfrastructureUpdate' }
+      responses:
+        '200':
+          description: Saved infrastructure
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Infrastructure' }
+
+  # ── Vehicles ──────────────────────────────────────────────
+  /vehicles:
+    get:
+      tags: [Vehicle]
+      summary: List vehicles
+      operationId: listVehicles
+      parameters:
+        - $ref: '#/components/parameters/ProducerIdQuery'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Page of vehicles
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VehiclePage' }
+    post:
+      tags: [Vehicle]
+      summary: Create a vehicle
+      operationId: createVehicle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VehicleCreate' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Vehicle' }
+
+  /vehicles/{vehicleId}:
+    parameters:
+      - $ref: '#/components/parameters/VehicleId'
+    get:
+      tags: [Vehicle]
+      summary: Get a vehicle
+      operationId: getVehicle
+      responses:
+        '200':
+          description: Vehicle
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Vehicle' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Vehicle]
+      summary: Update a vehicle
+      operationId: updateVehicle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VehicleUpdate' }
+      responses:
+        '200':
+          description: Updated vehicle
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Vehicle' }
+    delete:
+      tags: [Vehicle]
+      summary: Soft-delete a vehicle
+      operationId: deleteVehicle
+      responses:
+        '204': { description: Deleted }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  # ── Customers ─────────────────────────────────────────────
+  /customers:
+    get:
+      tags: [Customer]
+      summary: List customers
+      operationId: listCustomers
+      parameters:
+        - $ref: '#/components/parameters/ProducerIdQuery'
+        - name: search
+          in: query
+          schema: { type: string }
+          description: Case-insensitive name or address match
+        - name: type
+          in: query
+          schema: { $ref: '#/components/schemas/CustomerType' }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Page of customers
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CustomerPage' }
+    post:
+      tags: [Customer]
+      summary: Create a customer
+      operationId: createCustomer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CustomerCreate' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Customer' }
+
+  /customers/{customerId}:
+    parameters:
+      - $ref: '#/components/parameters/CustomerId'
+    get:
+      tags: [Customer]
+      summary: Get a customer
+      operationId: getCustomer
+      responses:
+        '200':
+          description: Customer
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Customer' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Customer]
+      summary: Update a customer
+      operationId: updateCustomer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CustomerUpdate' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Customer' }
+    delete:
+      tags: [Customer]
+      summary: Soft-delete a customer
+      operationId: deleteCustomer
+      responses:
+        '204': { description: Deleted }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  # ── Routes ────────────────────────────────────────────────
+  /routes:
+    get:
+      tags: [Route]
+      summary: List routes
+      operationId: listRoutes
+      parameters:
+        - $ref: '#/components/parameters/ProducerIdQuery'
+        - name: dayOfWeek
+          in: query
+          schema: { $ref: '#/components/schemas/DayOfWeek' }
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/RouteStatus' }
+        - name: scheduledDate
+          in: query
+          schema: { type: string, format: date }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Page of routes
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoutePage' }
+    post:
+      tags: [Route]
+      summary: Create a route
+      operationId: createRoute
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RouteCreate' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Route' }
+
+  /routes/{routeId}:
+    parameters:
+      - $ref: '#/components/parameters/RouteId'
+    get:
+      tags: [Route]
+      summary: Get a route (with stops)
+      operationId: getRoute
+      responses:
+        '200':
+          description: Route with its stops
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RouteDetail' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Route]
+      summary: Update a route
+      operationId: updateRoute
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RouteUpdate' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Route' }
+        '409':
+          description: Route already validated / immutable
+    delete:
+      tags: [Route]
+      summary: Soft-delete a route
+      operationId: deleteRoute
+      responses:
+        '204': { description: Deleted }
+
+  /routes/{routeId}/duplicate:
+    parameters:
+      - $ref: '#/components/parameters/RouteId'
+    post:
+      tags: [Route]
+      summary: Duplicate a route (with its stops)
+      operationId: duplicateRoute
+      responses:
+        '201':
+          description: New route
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Route' }
+
+  /routes/{routeId}/validate:
+    parameters:
+      - $ref: '#/components/parameters/RouteId'
+    post:
+      tags: [Route]
+      summary: Validate a route (locks it)
+      operationId: validateRoute
+      responses:
+        '200':
+          description: Validated route
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Route' }
+        '422':
+          description: Route is not in a validatable state (no stops, etc.)
+
+  /routes/{routeId}/optimize:
+    parameters:
+      - $ref: '#/components/parameters/RouteId'
+    post:
+      tags: [Route]
+      summary: Reorder stops to minimise distance (TSP)
+      operationId: optimizeRoute
+      responses:
+        '200':
+          description: Optimized route
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RouteDetail' }
+
+  # ── Stops ─────────────────────────────────────────────────
+  /routes/{routeId}/stops:
+    parameters:
+      - $ref: '#/components/parameters/RouteId'
+    post:
+      tags: [Stop]
+      summary: Append a stop to a route
+      operationId: createStop
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StopCreate' }
+      responses:
+        '201':
+          description: Created stop
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Stop' }
+
+  /routes/{routeId}/stops/{stopId}:
+    parameters:
+      - $ref: '#/components/parameters/RouteId'
+      - $ref: '#/components/parameters/StopId'
+    put:
+      tags: [Stop]
+      summary: Update a stop
+      operationId: updateStop
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StopUpdate' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Stop' }
+    delete:
+      tags: [Stop]
+      summary: Remove a stop (sequences are renumbered)
+      operationId: deleteStop
+      responses:
+        '204': { description: Deleted }
+
+  /routes/{routeId}/stops/reorder:
+    parameters:
+      - $ref: '#/components/parameters/RouteId'
+    patch:
+      tags: [Stop]
+      summary: Re-order all stops of a route
+      operationId: reorderStops
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StopReorderRequest' }
+      responses:
+        '200':
+          description: Stops after reordering
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Stop' }
+
+  # ── Products (optional catalogue) ─────────────────────────
+  /products:
+    get:
+      tags: [Product]
+      summary: List products
+      operationId: listProducts
+      parameters:
+        - $ref: '#/components/parameters/ProducerIdQuery'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Page of products
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProductPage' }
+    post:
+      tags: [Product]
+      summary: Create a product
+      operationId: createProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProductCreate' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Product' }
+
+  /products/{productId}:
+    parameters:
+      - $ref: '#/components/parameters/ProductId'
+    get:
+      tags: [Product]
+      summary: Get a product
+      operationId: getProduct
+      responses:
+        '200':
+          description: Product
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Product' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Product]
+      summary: Update a product
+      operationId: updateProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProductUpdate' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Product' }
+    delete:
+      tags: [Product]
+      summary: Soft-delete a product
+      operationId: deleteProduct
+      responses:
+        '204': { description: Deleted }
+
+  # ── Stop items (per-stop products) ────────────────────────
+  /stops/{stopId}/items:
+    parameters:
+      - $ref: '#/components/parameters/StopId'
+    get:
+      tags: [StopItem]
+      summary: List items delivered at a stop
+      operationId: listStopItems
+      responses:
+        '200':
+          description: Items
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/StopItem' }
+    post:
+      tags: [StopItem]
+      summary: Add a product line to a stop
+      operationId: createStopItem
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StopItemCreate' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StopItem' }
+
+  /stops/{stopId}/items/{itemId}:
+    parameters:
+      - $ref: '#/components/parameters/StopId'
+      - name: itemId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      tags: [StopItem]
+      summary: Update a stop item
+      operationId: updateStopItem
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StopItemUpdate' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StopItem' }
+    delete:
+      tags: [StopItem]
+      summary: Remove a stop item
+      operationId: deleteStopItem
+      responses:
+        '204': { description: Deleted }
+
+  # ── Geo helpers ───────────────────────────────────────────
+  /geo/geocode:
+    post:
+      tags: [Geo]
+      summary: Search an address (proxy to geocoding provider)
+      operationId: geocode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query: { type: string, example: "12 rue du marché, Marche-en-Famenne" }
+      responses:
+        '200':
+          description: Candidate places
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/GeocodeResult' }
+
+  /geo/route:
+    post:
+      tags: [Geo]
+      summary: Compute distance and duration between ordered waypoints
+      operationId: computeRoute
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RoutingRequest' }
+      responses:
+        '200':
+          description: Routing result
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoutingResult' }
+
+  # ── Stats ────────────────────────────────────────────────
+  /routes/{routeId}/stats:
+    parameters:
+      - $ref: '#/components/parameters/RouteId'
+    get:
+      tags: [Stats]
+      summary: KPI snapshot for a single route
+      operationId: getRouteStats
+      responses:
+        '200':
+          description: Route stats
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RouteStats' }
+
+  /stats/summary:
+    get:
+      tags: [Stats]
+      summary: Aggregated KPIs across routes over a period
+      operationId: getGlobalStats
+      parameters:
+        - $ref: '#/components/parameters/ProducerIdQuery'
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Aggregated KPIs
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GlobalStats' }
+
+  # ── Export ───────────────────────────────────────────────
+  /routes/{routeId}/email:
+    parameters:
+      - $ref: '#/components/parameters/RouteId'
+    post:
+      tags: [Export]
+      summary: Send the route summary by email
+      operationId: emailRoute
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [to]
+              properties:
+                to:
+                  type: array
+                  items: { type: string, format: email }
+                subject: { type: string }
+                message: { type: string }
+      responses:
+        '202': { description: Accepted for delivery }
+
+  /routes/{routeId}/export.pdf:
+    parameters:
+      - $ref: '#/components/parameters/RouteId'
+    get:
+      tags: [Export]
+      summary: Export a route as a PDF document
+      operationId: exportRoutePdf
+      responses:
+        '200':
+          description: PDF file
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+
+  /routes/{routeId}/export.gpx:
+    parameters:
+      - $ref: '#/components/parameters/RouteId'
+    get:
+      tags: [Export]
+      summary: Export a route as a GPX track
+      operationId: exportRouteGpx
+      responses:
+        '200':
+          description: GPX file
+          content:
+            application/gpx+xml:
+              schema: { type: string, format: binary }
+
+  # ── Optimization ─────────────────────────────────────────
+  /optimization/daily-routing:
+    post:
+      tags: [Optimization]
+      summary: Optimize direct-vs-hub assignment for a producer's daily deliveries
+      description: |
+        Solves a MILP that assigns each planned delivery stop (for the given
+        producer and date) either to a direct delivery by the producer, or to
+        transit through one of the coop-available hubs for xDock last-mile.
+        Minimizes the total daily cost including producer fleet cost, hub
+        fleet cost, handling fees and the detour cost of visiting a hub.
+      operationId: optimizeDailyRouting
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OptimizationInput' }
+      responses:
+        '200':
+          description: Optimization result
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OptimizationResult' }
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+# ─────────────────────────────────────────────────────────────
+# COMPONENTS
+# ─────────────────────────────────────────────────────────────
+components:
+
+  # ── Reusable parameters ───────────────────────────────────
+  parameters:
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+    Offset:
+      name: offset
+      in: query
+      schema: { type: integer, minimum: 0, default: 0 }
+    ProducerIdQuery:
+      name: producerId
+      in: query
+      required: true
+      description: Producer scope for the request
+      schema: { type: string, format: uuid }
+    ProducerId:
+      name: producerId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    VehicleId:
+      name: vehicleId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    CustomerId:
+      name: customerId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    RouteId:
+      name: routeId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    StopId:
+      name: stopId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ProductId:
+      name: productId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+  # ── Reusable responses ────────────────────────────────────
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Conflict:
+      description: Conflict with current resource state
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    UnprocessableEntity:
+      description: Request rejected due to business rule violation
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
+  # ── Schemas ───────────────────────────────────────────────
+  schemas:
+
+    Producer:
+      type: object
+      required: [id, name]
+      properties:
+        id:          { type: string, format: uuid, readOnly: true }
+        name:        { type: string }
+        contact:     { type: string, nullable: true }
+        address:     { type: string, nullable: true }
+        province:    { type: string, nullable: true }
+        isBio:       { type: boolean, default: false }
+
+    ProducerPage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Producer' }
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:    { type: string, example: VALIDATION_FAILED }
+        message: { type: string, example: "Field 'name' must not be blank" }
+        details:
+          type: object
+          additionalProperties: true
+
+    Page:
+      type: object
+      required: [total, limit, offset]
+      properties:
+        total:  { type: integer, example: 42 }
+        limit:  { type: integer, example: 50 }
+        offset: { type: integer, example: 0 }
+
+    # ── Enums ─────────────────────────────────────────────
+    VehicleType:
+      type: string
+      enum: [van, light_truck, heavy_truck]
+    FuelType:
+      type: string
+      enum: [diesel, gasoline, cng, electric, hybrid]
+    DriverType:
+      type: string
+      enum: [employee, owner, external]
+    CustomerType:
+      type: string
+      enum: [restaurant, school, csa, shop, individual, pickup_point, other]
+    DayOfWeek:
+      type: string
+      enum: [monday, tuesday, wednesday, thursday, friday, saturday, sunday]
+    RouteStatus:
+      type: string
+      enum: [draft, validated, completed, cancelled]
+    StopOperation:
+      type: string
+      enum: [delivery, pickup, relay_point]
+    ProductCategory:
+      type: string
+      enum: [dry, fresh, frozen]
+
+    # ── Infrastructure ────────────────────────────────────
+    Infrastructure:
+      type: object
+      required: [drySurfaceM2, freshSurfaceM2, frozenSurfaceM2, prepSurfaceM2]
+      properties:
+        id:              { type: string, format: uuid, readOnly: true }
+        producerId:      { type: string, format: uuid, readOnly: true }
+        drySurfaceM2:    { type: integer, minimum: 0 }
+        freshSurfaceM2:  { type: integer, minimum: 0 }
+        frozenSurfaceM2: { type: integer, minimum: 0 }
+        prepSurfaceM2:   { type: integer, minimum: 0 }
+        depotLatitude:   { type: number, format: double, minimum: -90,  maximum: 90,  nullable: true }
+        depotLongitude:  { type: number, format: double, minimum: -180, maximum: 180, nullable: true }
+        updatedAt:       { type: string, format: date-time, readOnly: true }
+
+    InfrastructureUpdate:
+      type: object
+      properties:
+        drySurfaceM2:    { type: integer, minimum: 0 }
+        freshSurfaceM2:  { type: integer, minimum: 0 }
+        frozenSurfaceM2: { type: integer, minimum: 0 }
+        prepSurfaceM2:   { type: integer, minimum: 0 }
+        depotLatitude:   { type: number, format: double, minimum: -90,  maximum: 90,  nullable: true }
+        depotLongitude:  { type: number, format: double, minimum: -180, maximum: 180, nullable: true }
+
+    # ── Vehicle ───────────────────────────────────────────
+    Vehicle:
+      type: object
+      required: [id, type, fuel, refrigerated]
+      properties:
+        id:                 { type: string, format: uuid, readOnly: true }
+        producerId:         { type: string, format: uuid, readOnly: true }
+        type:               { $ref: '#/components/schemas/VehicleType' }
+        fuel:               { $ref: '#/components/schemas/FuelType' }
+        consumptionL100Km:  { type: number, format: double, nullable: true }
+        fuelPrice:          { type: number, format: double, nullable: true }
+        amortizationEurKm:  { type: number, format: double, nullable: true }
+        refrigerated:       { type: boolean }
+        driverType:         { $ref: '#/components/schemas/DriverType' }
+        hourlyCost:         { type: number, format: double, nullable: true }
+        prepTimeMin:        { type: integer, minimum: 0 }
+        loadingTimeMin:     { type: integer, minimum: 0 }
+        createdAt:          { type: string, format: date-time, readOnly: true }
+        updatedAt:          { type: string, format: date-time, readOnly: true }
+
+    VehicleCreate:
+      type: object
+      required: [producerId, type, fuel]
+      properties:
+        producerId:         { type: string, format: uuid }
+        type:               { $ref: '#/components/schemas/VehicleType' }
+        fuel:               { $ref: '#/components/schemas/FuelType' }
+        consumptionL100Km:  { type: number, format: double }
+        fuelPrice:          { type: number, format: double }
+        amortizationEurKm:  { type: number, format: double }
+        refrigerated:       { type: boolean, default: false }
+        driverType:         { $ref: '#/components/schemas/DriverType' }
+        hourlyCost:         { type: number, format: double }
+        prepTimeMin:        { type: integer, minimum: 0, default: 0 }
+        loadingTimeMin:     { type: integer, minimum: 0, default: 0 }
+
+    VehicleUpdate:
+      type: object
+      properties:
+        type:               { $ref: '#/components/schemas/VehicleType' }
+        fuel:               { $ref: '#/components/schemas/FuelType' }
+        consumptionL100Km:  { type: number, format: double }
+        fuelPrice:          { type: number, format: double }
+        amortizationEurKm:  { type: number, format: double }
+        refrigerated:       { type: boolean }
+        driverType:         { $ref: '#/components/schemas/DriverType' }
+        hourlyCost:         { type: number, format: double }
+        prepTimeMin:        { type: integer, minimum: 0 }
+        loadingTimeMin:     { type: integer, minimum: 0 }
+
+    VehiclePage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Vehicle' }
+
+    # ── Customer ──────────────────────────────────────────
+    Customer:
+      type: object
+      required: [id, name]
+      properties:
+        id:             { type: string, format: uuid, readOnly: true }
+        producerId:     { type: string, format: uuid, readOnly: true }
+        name:           { type: string }
+        type:           { $ref: '#/components/schemas/CustomerType' }
+        address:        { type: string, nullable: true }
+        latitude:       { type: number, format: double, nullable: true }
+        longitude:      { type: number, format: double, nullable: true }
+        contactEmail:   { type: string, format: email, nullable: true }
+        contactPhone:   { type: string, nullable: true }
+        deliveryHours:  { type: string, nullable: true }
+        notes:          { type: string, nullable: true }
+        createdAt:      { type: string, format: date-time, readOnly: true }
+        updatedAt:      { type: string, format: date-time, readOnly: true }
+
+    CustomerCreate:
+      type: object
+      required: [producerId, name]
+      properties:
+        producerId:    { type: string, format: uuid }
+        name:          { type: string }
+        type:          { $ref: '#/components/schemas/CustomerType' }
+        address:       { type: string }
+        latitude:      { type: number, format: double }
+        longitude:     { type: number, format: double }
+        contactEmail:  { type: string, format: email }
+        contactPhone:  { type: string }
+        deliveryHours: { type: string }
+        notes:         { type: string }
+
+    CustomerUpdate:
+      type: object
+      properties:
+        name:          { type: string }
+        type:          { $ref: '#/components/schemas/CustomerType' }
+        address:       { type: string }
+        latitude:      { type: number, format: double }
+        longitude:     { type: number, format: double }
+        contactEmail:  { type: string, format: email }
+        contactPhone:  { type: string }
+        deliveryHours: { type: string }
+        notes:         { type: string }
+
+    CustomerPage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Customer' }
+
+    # ── Route ─────────────────────────────────────────────
+    Route:
+      type: object
+      required: [id, name, status]
+      properties:
+        id:                  { type: string, format: uuid, readOnly: true }
+        producerId:          { type: string, format: uuid, readOnly: true }
+        vehicleId:           { type: string, format: uuid, nullable: true }
+        name:                { type: string }
+        dayOfWeek:           { $ref: '#/components/schemas/DayOfWeek' }
+        scheduledDate:       { type: string, format: date, nullable: true }
+        status:              { $ref: '#/components/schemas/RouteStatus' }
+        distanceKm:          { type: number, format: double, nullable: true }
+        durationMin:         { type: integer, nullable: true }
+        totalCost:           { type: number, format: double, nullable: true }
+        totalRevenue:        { type: number, format: double, nullable: true }
+        profitabilityRatio:  { type: number, format: double, nullable: true }
+        createdAt:           { type: string, format: date-time, readOnly: true }
+        updatedAt:           { type: string, format: date-time, readOnly: true }
+
+    RouteDetail:
+      allOf:
+        - $ref: '#/components/schemas/Route'
+        - type: object
+          properties:
+            stops:
+              type: array
+              items: { $ref: '#/components/schemas/Stop' }
+
+    RouteCreate:
+      type: object
+      required: [producerId, name]
+      properties:
+        producerId:    { type: string, format: uuid }
+        name:          { type: string }
+        vehicleId:     { type: string, format: uuid }
+        dayOfWeek:     { $ref: '#/components/schemas/DayOfWeek' }
+        scheduledDate: { type: string, format: date }
+
+    RouteUpdate:
+      type: object
+      properties:
+        name:          { type: string }
+        vehicleId:     { type: string, format: uuid }
+        dayOfWeek:     { $ref: '#/components/schemas/DayOfWeek' }
+        scheduledDate: { type: string, format: date }
+
+    RoutePage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Route' }
+
+    # ── Stop ──────────────────────────────────────────────
+    Stop:
+      type: object
+      required: [id, sequence, operation]
+      properties:
+        id:                 { type: string, format: uuid, readOnly: true }
+        routeId:            { type: string, format: uuid, readOnly: true }
+        customerId:         { type: string, format: uuid, nullable: true }
+        sequence:           { type: integer, minimum: 1 }
+        operation:          { $ref: '#/components/schemas/StopOperation' }
+        amountEur:          { type: number, format: double }
+        durationMin:        { type: integer, minimum: 0 }
+        distanceFromPrevKm: { type: number, format: double, nullable: true }
+        latitude:           { type: number, format: double, nullable: true }
+        longitude:          { type: number, format: double, nullable: true }
+        address:            { type: string, nullable: true }
+
+    StopCreate:
+      type: object
+      required: [operation]
+      properties:
+        customerId:  { type: string, format: uuid }
+        operation:   { $ref: '#/components/schemas/StopOperation' }
+        amountEur:   { type: number, format: double, default: 0 }
+        durationMin: { type: integer, minimum: 0, default: 15 }
+        latitude:    { type: number, format: double }
+        longitude:   { type: number, format: double }
+        address:     { type: string }
+
+    StopUpdate:
+      allOf:
+        - $ref: '#/components/schemas/StopCreate'
+
+    StopReorderRequest:
+      type: object
+      required: [order]
+      properties:
+        order:
+          type: array
+          description: Stop IDs in the desired order
+          items: { type: string, format: uuid }
+
+    # ── Product ───────────────────────────────────────────
+    Product:
+      type: object
+      required: [id, name, unit, producerId]
+      properties:
+        id:            { type: string, format: uuid, readOnly: true }
+        name:          { type: string }
+        category:      { type: string, nullable: true }
+        ean:           { type: string, nullable: true }
+        unit:          { type: string }
+        storageType:   { type: string, nullable: true }
+        isBio:         { type: boolean, default: false }
+        certification: { type: string, nullable: true }
+        producerId:    { type: string, format: uuid, readOnly: true }
+
+    ProductCreate:
+      type: object
+      required: [producerId, name, unit]
+      properties:
+        producerId:    { type: string, format: uuid }
+        name:          { type: string }
+        category:      { type: string, nullable: true }
+        ean:           { type: string, nullable: true }
+        unit:          { type: string }
+        storageType:   { type: string, nullable: true }
+        isBio:         { type: boolean, default: false }
+        certification: { type: string, nullable: true }
+
+    ProductUpdate:
+      type: object
+      properties:
+        name:          { type: string }
+        category:      { type: string, nullable: true }
+        ean:           { type: string, nullable: true }
+        unit:          { type: string }
+        storageType:   { type: string, nullable: true }
+        isBio:         { type: boolean, default: false }
+        certification: { type: string, nullable: true }
+
+    ProductPage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Product' }
+
+    # ── Stop item ─────────────────────────────────────────
+    StopItem:
+      type: object
+      required: [id, stopId, productId, quantity]
+      properties:
+        id:        { type: string, format: uuid, readOnly: true }
+        stopId:    { type: string, format: uuid, readOnly: true }
+        productId: { type: string, format: uuid }
+        quantity:  { type: number, format: double, minimum: 0 }
+        unitPrice: { type: number, format: double, nullable: true }
+
+    StopItemCreate:
+      type: object
+      required: [productId, quantity]
+      properties:
+        productId: { type: string, format: uuid }
+        quantity:  { type: number, format: double, minimum: 0 }
+        unitPrice: { type: number, format: double }
+
+    StopItemUpdate:
+      allOf:
+        - $ref: '#/components/schemas/StopItemCreate'
+
+    # ── Geo ───────────────────────────────────────────────
+    GeocodeResult:
+      type: object
+      required: [displayName, latitude, longitude]
+      properties:
+        displayName: { type: string }
+        latitude:    { type: number, format: double }
+        longitude:   { type: number, format: double }
+        confidence:  { type: number, format: double, nullable: true }
+
+    Waypoint:
+      type: object
+      required: [latitude, longitude]
+      properties:
+        latitude:  { type: number, format: double }
+        longitude: { type: number, format: double }
+
+    RoutingRequest:
+      type: object
+      required: [waypoints]
+      properties:
+        waypoints:
+          type: array
+          minItems: 2
+          items: { $ref: '#/components/schemas/Waypoint' }
+        returnGeometry:
+          type: boolean
+          default: false
+
+    RoutingLeg:
+      type: object
+      properties:
+        distanceKm:  { type: number, format: double }
+        durationMin: { type: integer }
+
+    RoutingResult:
+      type: object
+      properties:
+        distanceKm:  { type: number, format: double }
+        durationMin: { type: integer }
+        legs:
+          type: array
+          items: { $ref: '#/components/schemas/RoutingLeg' }
+        geometry:
+          type: string
+          description: Encoded polyline (optional)
+
+    # ── Stats ─────────────────────────────────────────────
+    RouteStats:
+      type: object
+      properties:
+        routeId:            { type: string, format: uuid }
+        distanceKm:         { type: number, format: double }
+        durationMin:        { type: integer }
+        totalCost:          { type: number, format: double }
+        totalRevenue:       { type: number, format: double }
+        profitabilityRatio: { type: number, format: double }
+        costPerStop:        { type: number, format: double }
+        revenuePerKm:       { type: number, format: double }
+
+    GlobalStats:
+      type: object
+      properties:
+        routesCount:        { type: integer }
+        totalDistanceKm:    { type: number, format: double }
+        totalDurationMin:   { type: integer }
+        totalCost:          { type: number, format: double }
+        totalRevenue:       { type: number, format: double }
+        averageRatio:       { type: number, format: double }
+
+    # ── Optimization ──────────────────────────────────────
+    OptimizationInput:
+      type: object
+      required: [date]
+      properties:
+        date:
+          type: string
+          format: date
+          description: Scheduled date of the routes to consider (all producers)
+        handlingFeePerUnit:
+          type: number
+          format: double
+          default: 0
+          description: Coop handling fee charged per unit of volume transiting through a hub
+        openingFee:
+          type: number
+          format: double
+          default: 0
+          description: Flat fee applied each time a hub is used in the day
+        maxSolveTimeMs:
+          type: integer
+          format: int64
+          default: 10000
+          minimum: 100
+          description: Solver time budget in milliseconds
+
+    OptimizationResult:
+      type: object
+      required:
+        - date
+        - solverStatus
+        - stopCount
+        - producerCount
+        - baselineAllDirectCostEur
+        - optimizedCostEur
+        - savingsEur
+        - assignments
+        - transfers
+        - pickingLists
+      properties:
+        date:                     { type: string, format: date }
+        solverStatus:             { type: string, description: "OPTIMAL | FEASIBLE | NO_STOPS | NO_PRODUCER_WITH_DEPOT | NO_HUBS_AVAILABLE" }
+        solveTimeMs:              { type: integer, format: int64 }
+        stopCount:                { type: integer }
+        producerCount:            { type: integer }
+        hubsAvailable:            { type: integer }
+        hubsUsed:                 { type: integer }
+        baselineAllDirectCostEur: { type: number, format: double, description: "Total cost if every producer delivered every stop direct from its own depot" }
+        optimizedCostEur:         { type: number, format: double }
+        savingsEur:               { type: number, format: double, description: "baseline - optimized" }
+        assignments:
+          type: array
+          items: { $ref: '#/components/schemas/OptimizationStopAssignment' }
+        transfers:
+          type: array
+          description: Bulk drops each producer must perform at each used hub
+          items: { $ref: '#/components/schemas/OptimizationProducerHubTransfer' }
+        pickingLists:
+          type: array
+          description: Per-hub last-mile manifest (all producers combined)
+          items: { $ref: '#/components/schemas/OptimizationHubPickingList' }
+
+    OptimizationStopAssignment:
+      type: object
+      required: [stopId, routeId, producerId, sequence, mode, volume, directCostEur]
+      properties:
+        stopId:        { type: string, format: uuid }
+        routeId:       { type: string, format: uuid }
+        producerId:    { type: string, format: uuid }
+        sequence:      { type: integer }
+        mode:
+          type: string
+          enum: [DIRECT, VIA_HUB]
+        hubId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Infrastructure ID of the chosen hub; null if mode=DIRECT
+        volume:        { type: number, format: double }
+        directCostEur: { type: number, format: double }
+        viaHubCostEur:
+          type: number
+          format: double
+          nullable: true
+          description: Cost of the chosen hub last-mile; null if mode=DIRECT
+
+    OptimizationProducerHubTransfer:
+      type: object
+      required: [producerId, hubId, detourKm, detourCostEur, totalVolume, stopIds]
+      properties:
+        producerId:    { type: string, format: uuid }
+        hubId:         { type: string, format: uuid }
+        detourKm:      { type: number, format: double, description: "Round-trip detour depot → hub → depot" }
+        detourCostEur: { type: number, format: double }
+        totalVolume:   { type: number, format: double }
+        stopIds:
+          type: array
+          items: { type: string, format: uuid }
+
+    OptimizationHubPickingList:
+      type: object
+      required:
+        - hubId
+        - hubProducerId
+        - latitude
+        - longitude
+        - stopIds
+        - contributingProducers
+        - totalVolume
+        - openingCostEur
+      properties:
+        hubId:         { type: string, format: uuid }
+        hubProducerId: { type: string, format: uuid }
+        latitude:      { type: number, format: double }
+        longitude:     { type: number, format: double }
+        stopIds:
+          type: array
+          items: { type: string, format: uuid }
+        contributingProducers:
+          type: array
+          items: { type: string, format: uuid }
+        totalVolume:    { type: number, format: double }
+        openingCostEur: { type: number, format: double }
