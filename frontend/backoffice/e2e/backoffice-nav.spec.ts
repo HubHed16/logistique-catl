@@ -2,9 +2,8 @@ import { test, expect } from "./fixtures";
 
 /**
  * Smoke tests de navigation du back-office.
- * On teste chaque route indépendamment pour éviter l'accumulation de
- * temps de compilation du dev server Next (qui compile à froid route par
- * route).
+ * Chaque route testée isolément pour éviter l'accumulation de temps de
+ * compilation à froid (dev server Next).
  */
 
 test.describe("Back-office / navigation", () => {
@@ -22,18 +21,21 @@ test.describe("Back-office / navigation", () => {
       page.getByRole("link", { name: /Zones/ }).first(),
     ).toBeVisible();
     await expect(
-      page.getByRole("link", { name: /Historique/ }).first(),
+      page.getByRole("link", { name: /Producteurs/ }).first(),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: /Simulateur/ }).first(),
     ).toBeVisible();
   });
 
   for (const [path, label] of [
     ["/zones", "Zones"],
     ["/reception", "Réception"],
-    ["/history", "Historique"],
+    ["/producers", "Producteurs"],
     ["/simulator", "Simulateur"],
   ] as const) {
     test(`la nav permet d'atteindre ${path}`, async ({ cleanPage: page }) => {
-      test.setTimeout(60_000); // dev server peut mettre ~15s à compiler à froid
+      test.setTimeout(60_000);
       await page.goto("/");
       await page.locator(`nav a[href="${path}"]`).click();
       await page.waitForURL(new RegExp(`${path}$`), {
@@ -43,17 +45,17 @@ test.describe("Back-office / navigation", () => {
       await expect(
         page.locator(`nav a[href="${path}"]`).first(),
       ).toBeVisible();
-      expect(label).toBeTruthy(); // garde la var utile pour le nom du test
+      expect(label).toBeTruthy();
     });
   }
 
-  test("le lien Simulateur (legacy) pointe vers /simulator/index.html", async ({
+  test("aucun lien Historique ni Simulateur (legacy) dans la nav", async ({
     cleanPage: page,
   }) => {
     await page.goto("/");
-    const href = await page
-      .locator('nav a[href="/simulator/index.html"]')
-      .getAttribute("href");
-    expect(href).toBe("/simulator/index.html");
+    await expect(page.locator('nav a[href="/history"]')).toHaveCount(0);
+    await expect(
+      page.locator('nav a[href="/simulator/index.html"]'),
+    ).toHaveCount(0);
   });
 });

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ExternalLink, History, Inbox, Layers, Route } from "lucide-react";
+import { Inbox, Layers, Route, Users } from "lucide-react";
 
 export default function HomePage() {
   return (
@@ -10,8 +10,8 @@ export default function HomePage() {
         </h1>
         <p className="text-catl-text">
           Pilotage des flux entrepôt de la Ceinture Aliment-Terre Liégeoise :
-          réception des livraisons producteurs, gestion des zones de stockage et
-          traçabilité des actions.
+          réception des livraisons producteurs, gestion des zones de stockage,
+          fiches producteurs et simulateur logistique.
         </p>
       </div>
 
@@ -45,35 +45,30 @@ export default function HomePage() {
           </Link>
 
           <Link
-            href="/history"
+            href="/producers"
             className="catl-card hover:shadow-md transition-shadow block"
           >
             <div className="flex items-center gap-3 mb-2">
-              <History className="w-5 h-5 text-catl-accent" />
-              <span className="font-bold text-catl-primary">Historique</span>
+              <Users className="w-5 h-5 text-catl-accent" />
+              <span className="font-bold text-catl-primary">Producteurs</span>
             </div>
             <p className="text-sm text-catl-text">
-              Consulter la chronologie des actions effectuées.
+              Gérer les producteurs, leurs surfaces et véhicules.
             </p>
           </Link>
 
-          <a
-            href="/simulator/index.html"
-            target="_blank"
-            rel="noopener noreferrer"
+          <Link
+            href="/simulator"
             className="catl-card hover:shadow-md transition-shadow block"
           >
             <div className="flex items-center gap-3 mb-2">
               <Route className="w-5 h-5 text-catl-accent" />
-              <span className="font-bold text-catl-primary flex items-center gap-1.5">
-                Simulateur
-                <ExternalLink className="w-3 h-3 opacity-60" />
-              </span>
+              <span className="font-bold text-catl-primary">Simulateur</span>
             </div>
             <p className="text-sm text-catl-text">
-              Ouvrir l&apos;ancien simulateur logistique (tournées + coûts).
+              Planifier les tournées et mesurer leur coût logistique.
             </p>
-          </a>
+          </Link>
         </div>
       </section>
     </div>

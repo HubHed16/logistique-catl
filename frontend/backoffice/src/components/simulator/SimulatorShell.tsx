@@ -1,12 +1,15 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { Info } from "lucide-react";
-import { InfrastructureForm } from "@/components/simulator/InfrastructureForm";
-import { ProducerForm } from "@/components/simulator/ProducerForm";
+import Link from "next/link";
+import { Info, MapPin, Settings2, Truck, Users } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import { ProducerSelector } from "@/components/simulator/ProducerSelector";
-import { VehicleForm } from "@/components/simulator/VehicleForm";
-import { useProducer } from "@/lib/simulator/api-hooks";
+import {
+  useInfrastructure,
+  useProducer,
+  useVehicles,
+} from "@/lib/simulator/api-hooks";
 import { useSimulator } from "@/lib/simulator/state";
 
 const SimulatorMap = dynamic(
@@ -17,8 +20,17 @@ const SimulatorMap = dynamic(
 
 export function SimulatorShell() {
   const { state } = useSimulator();
-  const { data: producer, isLoading } = useProducer(state.currentProducerId);
+  const { data: producer } = useProducer(state.currentProducerId);
+  const { data: infrastructure } = useInfrastructure(state.currentProducerId);
+  const { data: vehiclesPage } = useVehicles(state.currentProducerId);
   const currentId = state.currentProducerId;
+
+  const hasCoords =
+    producer &&
+    typeof producer.latitude === "number" &&
+    typeof producer.longitude === "number";
+  const hasInfra = !!infrastructure;
+  const vehicleCount = vehiclesPage?.items?.length ?? 0;
 
   return (
     <div className="space-y-5">
@@ -41,28 +53,93 @@ export function SimulatorShell() {
             <Info className="w-3 h-3" /> Aucun producteur sélectionné
           </span>
           <p className="text-sm text-catl-text">
-            Sélectionne un producteur dans le menu en haut à droite, ou
-            crée-en un pour commencer à configurer dépôt, surfaces et
-            véhicule.
+            Choisis un producteur dans le menu en haut à droite, ou{" "}
+            <Link
+              href="/producers"
+              className="underline text-catl-accent font-semibold"
+            >
+              crée-en un depuis l&apos;onglet Producteurs
+            </Link>
+            .
           </p>
         </div>
       )}
 
-      {currentId && isLoading && (
-        <div className="text-sm text-catl-text">Chargement du producteur…</div>
-      )}
-
       {currentId && producer && (
-        <div className="grid grid-cols-1 xl:grid-cols-5 gap-5 items-start">
-          <div className="xl:col-span-3 space-y-5">
-            <ProducerForm producer={producer} />
-            <InfrastructureForm producerId={producer.id} />
-            <VehicleForm producerId={producer.id} />
+        <>
+          <div className="catl-section catl-section--primary">
+            <span className="catl-section-pill">
+              <Users className="w-3 h-3" /> Producteur actif
+            </span>
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div className="min-w-0">
+                <div className="font-bold text-lg text-catl-primary">
+                  {producer.name}
+                </div>
+                <div className="text-xs text-catl-text flex flex-wrap gap-x-3 gap-y-1 mt-1">
+                  <span className="inline-flex items-center gap-1">
+                    <MapPin className="w-3 h-3" />
+                    {hasCoords ? (
+                      <span className="font-mono">
+                        {producer.latitude!.toFixed(5)},{" "}
+                        {producer.longitude!.toFixed(5)}
+                      </span>
+                    ) : (
+                      <span className="text-catl-danger">
+                        Aucune coordonnée — à placer sur la carte
+                      </span>
+                    )}
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <Settings2 className="w-3 h-3" />
+                    {hasInfra ? (
+                      `Surfaces ${infrastructure.drySurfaceM2}/${infrastructure.freshSurfaceM2}/${infrastructure.frozenSurfaceM2}/${infrastructure.prepSurfaceM2} m²`
+                    ) : (
+                      <span className="text-catl-danger">
+                        Infrastructure non configurée
+                      </span>
+                    )}
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <Truck className="w-3 h-3" />
+                    {vehicleCount > 0 ? (
+                      `${vehicleCount} véhicule${vehicleCount > 1 ? "s" : ""}`
+                    ) : (
+                      <span className="text-catl-danger">
+                        Aucun véhicule
+                      </span>
+                    )}
+                  </span>
+                </div>
+              </div>
+              <Link href="/producers">
+                <Button variant="secondary" size="sm">
+                  Gérer ce producteur
+                </Button>
+              </Link>
+            </div>
           </div>
-          <div className="xl:col-span-2 xl:sticky xl:top-5">
-            <SimulatorMap />
+
+          <div className="grid grid-cols-1 xl:grid-cols-5 gap-5 items-start">
+            <div className="xl:col-span-3">
+              <div className="catl-section catl-section--accent">
+                <span className="catl-section-pill">
+                  🚧 Tournées — bientôt
+                </span>
+                <p className="text-sm text-catl-text">
+                  L&apos;édition des tournées (arrêts, ordre de passage,
+                  calcul de coûts, optimisation TSP, export GPX) arrive dans
+                  la phase suivante. Pour l&apos;instant, tu peux placer ton
+                  dépôt sur la carte (bouton « Placer » ci-dessous) et tout
+                  le reste est géré dans l&apos;onglet Producteurs.
+                </p>
+              </div>
+            </div>
+            <div className="xl:col-span-2 xl:sticky xl:top-5">
+              <SimulatorMap />
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
