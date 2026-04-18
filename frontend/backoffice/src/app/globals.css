@@ -68,3 +68,34 @@ body {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Simulateur — contrôle custom carte (bouton recentrer / autres) */
+.catl-map-btn {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  color: var(--color-catl-primary);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  background-clip: padding-box;
+}
+.catl-map-btn:hover {
+  background: var(--color-catl-accent);
+  color: #ffffff;
+}
+
+/* Le divIcon Leaflet hérite d'un fond blanc par défaut — on neutralise */
+.catl-depot-marker {
+  background: transparent !important;
+  border: 0 !important;
+}
+
+/* Transitions plus douces pour les cartes CATL */
+.catl-card {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
