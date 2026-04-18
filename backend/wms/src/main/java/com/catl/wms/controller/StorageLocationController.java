@@ -11,76 +11,77 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @RequestMapping("/api/storage-locations")
 @RestController
 @RequiredArgsConstructor
 public class StorageLocationController {
-    
+
     private final StorageLocationService storageLocationService;
-    
-    
-    @GetMapping("/getAllStorageLocation")
-    public ResponseEntity<List<StorageLocationDto>> getAllstorageLocations(
+
+    @GetMapping
+    public ResponseEntity<List<StorageLocationDto>> getAllStorageLocations(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
             @RequestParam(defaultValue = "20") @Min(1) int size) {
 
-        var pageRequest = PageRequest.of(page, size);
-        Page<StorageLocationDto> storageLocation = storageLocationService.getAllstorageLocation(pageRequest);
+        PageRequest pageRequest = PageRequest.of(page, size);
+        Page<StorageLocationDto> locations = storageLocationService.getAllstorageLocation(pageRequest);
 
-        if (storageLocation.isEmpty()) {
+        if (locations.isEmpty()) {
             return ResponseEntity.noContent().build();
         }
-        return ResponseEntity.ok(storageLocation.getContent());
+
+        return ResponseEntity.ok(locations.getContent());
     }
 
-    @GetMapping("/getStorageLocationById")
-    public ResponseEntity<Optional<StorageLocationDto>> getStorageLocationById(@RequestParam UUID id) {
-        Optional<StorageLocationDto> storageLocation = storageLocationService.getStorageLocationById(id);
-        if (storageLocation.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(storageLocation);
+    @GetMapping("/{id}")
+    public ResponseEntity<StorageLocationDto> getStorageLocationById(@PathVariable UUID id) {
+        return storageLocationService.getStorageLocationById(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    @GetMapping("/zone")
-    public ResponseEntity<List<StorageLocationDto>> getStorageLocationsByZone(@RequestParam UUID zoneId) {
+    @GetMapping("/zone/{zoneId}")
+    public ResponseEntity<List<StorageLocationDto>> getByZone(@PathVariable UUID zoneId) {
         List<StorageLocationDto> locations = storageLocationService.getStorageLocationsByZoneId(zoneId);
+
         if (locations.isEmpty()) {
             return ResponseEntity.noContent().build();
         }
+
         return ResponseEntity.ok(locations);
     }
 
-    @GetMapping("/label")
-    public ResponseEntity<Optional<StorageLocationDto>> getStorageLocationByLabel(@RequestParam String label) {
-        Optional<StorageLocationDto> location = storageLocationService.getStorageLocationByLabel(label);
-        if (location.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(location);
+    @GetMapping("/label/{label}")
+    public ResponseEntity<StorageLocationDto> getByLabel(@PathVariable String label) {
+        return storageLocationService.getStorageLocationByLabel(label)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    @GetMapping("/rack")
-    public ResponseEntity<List<StorageLocationDto>> getStorageLocationsByRack(@RequestParam String rack) {
+    @GetMapping("/rack/{rack}")
+    public ResponseEntity<List<StorageLocationDto>> getByRack(@PathVariable String rack) {
         List<StorageLocationDto> locations = storageLocationService.getStorageLocationsByRack(rack);
+
         if (locations.isEmpty()) {
             return ResponseEntity.noContent().build();
         }
+
         return ResponseEntity.ok(locations);
     }
 
+    @PatchMapping("/{id}")
+    public ResponseEntity<StorageLocationDto> patchStorageLocation(
+            @PathVariable UUID id,
+            @RequestBody StorageLocationDto dto) {
 
-    @PostMapping()
-    public ResponseEntity<StorageLocationDto> saveOrUpdateStorageLocation(@RequestParam(required = false) UUID storageLocationId, @RequestBody StorageLocationDto storageLocationDto) {
-        StorageLocationDto result = storageLocationService.saveOrUpdateStorageLocation(storageLocationId, storageLocationDto);
+        StorageLocationDto result = storageLocationService.saveOrUpdateStorageLocation(id, dto);
         return ResponseEntity.ok(result);
     }
 
-    @DeleteMapping()
-    public ResponseEntity<Void> deleteStorageLocation(@RequestParam UUID id) {
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteStorageLocation(@PathVariable UUID id) {
         storageLocationService.deleteStorageLocation(id);
         return ResponseEntity.noContent().build();
     }

@@ -13,10 +13,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
-@RequestMapping("/api/product")
+@RequestMapping("/api/products")
 @RestController
 @Tag(name = "Product", description = "API to manage products")
 @RequiredArgsConstructor
@@ -24,41 +23,44 @@ public class ProductController {
 
     private final ProductService productService;
 
-    @GetMapping("/getAllProduct")
+    @GetMapping
     @Operation(summary = "Retrieve all products with pagination")
-    public ResponseEntity<List<ProductDto>> getAllProduct(
+    public ResponseEntity<List<ProductDto>> getAllProducts(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
             @RequestParam(defaultValue = "20") @Min(1) int size) {
 
-        var pageRequest = PageRequest.of(page, size);
-        Page<ProductDto> producer = productService.getAllProduct(pageRequest);
+        PageRequest pageRequest = PageRequest.of(page, size);
+        Page<ProductDto> products = productService.getAllProduct(pageRequest);
 
-        if (producer.isEmpty()) {
+        if (products.isEmpty()) {
             return ResponseEntity.noContent().build();
         }
-        return ResponseEntity.ok(producer.getContent());
+
+        return ResponseEntity.ok(products.getContent());
     }
 
-
-    @GetMapping("/getProductById")
+    @GetMapping("/{id}")
     @Operation(summary = "Retrieve a product by its ID")
-    public ResponseEntity<Optional<ProductDto>> getProductById(@RequestParam UUID idProduct){
-        var producer = productService.getProductById(idProduct);
-        if (producer.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(producer);
+    public ResponseEntity<ProductDto> getProductById(@PathVariable("id") UUID productId) {
+        return productService.getProductById(productId)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    @PostMapping("/products")
-    public ResponseEntity<ProductDto> saveOrUpdateProducer(@RequestParam(required = false) UUID productId, @RequestBody ProductDto productDto) {
+    @PatchMapping("/{id}")
+    @Operation(summary = "Partially update a product")
+    public ResponseEntity<ProductDto> patchProduct(
+            @PathVariable("id") UUID productId,
+            @RequestBody ProductDto productDto) {
+
         ProductDto result = productService.saveOrUpdateProduct(productId, productDto);
         return ResponseEntity.ok(result);
     }
 
-    @DeleteMapping("/producers")
-    public ResponseEntity<Void> deleteProducer(@RequestParam UUID productId) {
-        productService.deleteProducer(productId);
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Delete a product by its ID")
+    public ResponseEntity<Void> deleteProduct(@PathVariable("id") UUID productId) {
+        productService.deleteProduct(productId);
         return ResponseEntity.noContent().build();
     }
 }

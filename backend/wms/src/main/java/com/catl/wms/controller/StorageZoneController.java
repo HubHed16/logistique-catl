@@ -13,62 +13,63 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @RequestMapping("/api/storage-zones")
 @RestController
 @RequiredArgsConstructor
-@Tag(name = "Storage-zones", description = "API to manage storage zones")
+@Tag(name = "Storage Zones", description = "API to manage storage zones")
 public class StorageZoneController {
 
     private final StorageZoneService storageZoneService;
 
-    @GetMapping("/getAllStorageZones")
+    @GetMapping
     public ResponseEntity<List<StorageZoneDto>> getAllStorageZones(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
             @RequestParam(defaultValue = "20") @Min(1) int size) {
 
-        var pageRequest = PageRequest.of(page, size);
-        Page<StorageZoneDto> storageZone = storageZoneService.getAllStorageZone(pageRequest);
+        PageRequest pageRequest = PageRequest.of(page, size);
+        Page<StorageZoneDto> storageZones = storageZoneService.getAllStorageZone(pageRequest);
 
-        if (storageZone.isEmpty()) {
+        if (storageZones.isEmpty()) {
             return ResponseEntity.noContent().build();
         }
-        return ResponseEntity.ok(storageZone.getContent());
+
+        return ResponseEntity.ok(storageZones.getContent());
     }
 
-    @GetMapping("/getById")
-    public ResponseEntity<Optional<StorageZoneDto>> getStorageZoneById(@RequestParam UUID id) {
-        var storageZone = storageZoneService.getStorageZoneById(id);
-        if (storageZone.isEmpty()) {
-            return ResponseEntity.notFound().build();
+    @GetMapping("/{id}")
+    public ResponseEntity<StorageZoneDto> getStorageZoneById(@PathVariable UUID id) {
+        return storageZoneService.getStorageZoneById(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/types")
+    public ResponseEntity<List<StorageZoneDto>> getStorageZonesByType(
+            @RequestParam List<StorageZone.ZoneType> types) {
+
+        List<StorageZoneDto> storageZones = storageZoneService.getStorageZoneByType(types);
+
+        if (storageZones.isEmpty()) {
+            return ResponseEntity.noContent().build();
         }
-        return ResponseEntity.ok(storageZone);
+
+        return ResponseEntity.ok(storageZones);
     }
 
-    @GetMapping("/getByType")
-    public ResponseEntity<List<StorageZoneDto>> getStorageZoneByType(@RequestBody List<StorageZone.ZoneType> types) {
-        var storageZone = storageZoneService.getStorageZoneByType(types);
-        if (storageZone.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(storageZone);
-    }
+    @PatchMapping("/{id}")
+    public ResponseEntity<StorageZoneDto> patchStorageZone(
+            @PathVariable UUID id,
+            @RequestBody StorageZoneDto storageZoneDto) {
 
-    @PostMapping()
-    public ResponseEntity<StorageZoneDto> saveOrUpdateStorageZone(@RequestParam(required = false) UUID storageZoneId, @RequestBody StorageZoneDto storageZoneDto) {
-        StorageZoneDto result = storageZoneService.saveOrUpdateStorageZone(storageZoneId, storageZoneDto);
+        StorageZoneDto result = storageZoneService.saveOrUpdateStorageZone(id, storageZoneDto);
         return ResponseEntity.ok(result);
     }
 
-    @DeleteMapping()
-    public ResponseEntity<Void> deleteStorageZone(@RequestParam UUID storageZoneId){
-        try{
-            storageZoneService.deleteStorageZone(storageZoneId);
-            return ResponseEntity.noContent().build();
-        }catch (RuntimeException e){
-            return ResponseEntity.notFound().build();
-        }
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteStorageZone(@PathVariable UUID id) {
+        storageZoneService.deleteStorageZone(id);
+        return ResponseEntity.noContent().build();
     }
 }
