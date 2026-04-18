@@ -4,16 +4,19 @@ import L, { type LeafletMouseEvent } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Crosshair } from "lucide-react";
 import { useEffect, useRef } from "react";
-import { useFormContext, useWatch } from "react-hook-form";
+import { toast } from "sonner";
+import {
+  ApiError,
+  useProducer,
+  useUpdateProducer,
+} from "@/lib/simulator/api-hooks";
 import {
   DEFAULT_MAP_CENTER,
   DEFAULT_MAP_ZOOM,
-} from "@/lib/simulator/constants";
-import type { DepotFormInput } from "@/lib/simulator/schemas";
+} from "@/lib/simulator/types";
+import { useSimulator } from "@/lib/simulator/state";
 
-// Fix icônes Leaflet (Next/webpack ne trouve pas le chemin par défaut).
-// On n'utilise plus l'icône par défaut pour le dépôt (voir depotIcon ci-dessous),
-// mais on garde ce fix pour d'éventuels marqueurs standards (stops, etc.).
+// Fix icônes Leaflet (Next/webpack ne trouve pas le chemin par défaut)
 type IconPrototypeWithGetUrl = L.Icon.Default & { _getIconUrl?: unknown };
 delete (L.Icon.Default.prototype as IconPrototypeWithGetUrl)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -23,7 +26,6 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
-// Marqueur custom dépôt : pin SVG couleur CATL accent (--color-catl-accent #e67e22)
 function buildDepotIcon(): L.DivIcon {
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 48" width="36" height="48" aria-hidden="true">
@@ -51,7 +53,6 @@ function buildDepotIcon(): L.DivIcon {
   });
 }
 
-// Contrôle Leaflet pour recentrer la carte sur le dépôt
 function addRecenterControl(
   map: L.Map,
   getTarget: () => L.LatLng | null,
@@ -81,22 +82,16 @@ function addRecenterControl(
   return c;
 }
 
-type Props = {
-  pickMode: boolean;
-  onPicked: () => void;
-};
+export function SimulatorMap() {
+  const { state, dispatch } = useSimulator();
+  const { data: producer } = useProducer(state.currentProducerId);
+  const updateProducer = useUpdateProducer(state.currentProducerId ?? "");
 
-export function SimulatorMap({ pickMode, onPicked }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const depotMarkerRef = useRef<L.Marker | null>(null);
-  const recenterCtrlRef = useRef<L.Control | null>(null);
 
-  const { setValue, control } = useFormContext<DepotFormInput>();
-  const lat = useWatch({ control, name: "lat" });
-  const lon = useWatch({ control, name: "lon" });
-
-  // Init carte une seule fois
+  // Init carte
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
     const map = L.map(containerRef.current, {
@@ -104,7 +99,6 @@ export function SimulatorMap({ pickMode, onPicked }: Props) {
       attributionControl: true,
     }).setView(DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM);
 
-    // Fond CartoDB Positron — épuré, laisse ressortir les marqueurs
     L.tileLayer(
       "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
       {
@@ -115,28 +109,26 @@ export function SimulatorMap({ pickMode, onPicked }: Props) {
       },
     ).addTo(map);
 
-    const ctrl = addRecenterControl(map, () => {
+    addRecenterControl(map, () => {
       const m = depotMarkerRef.current;
       return m ? m.getLatLng() : null;
     });
 
     mapRef.current = map;
-    recenterCtrlRef.current = ctrl;
     return () => {
       map.remove();
       mapRef.current = null;
       depotMarkerRef.current = null;
-      recenterCtrlRef.current = null;
     };
   }, []);
 
-  // Synchronise le marqueur dépôt avec le formulaire
+  // Sync marqueur avec producer
+  const lat = producer?.latitude ?? null;
+  const lon = producer?.longitude ?? null;
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    const nLat = typeof lat === "number" ? lat : null;
-    const nLon = typeof lon === "number" ? lon : null;
-    if (nLat == null || nLon == null) {
+    if (lat == null || lon == null) {
       if (depotMarkerRef.current) {
         depotMarkerRef.current.remove();
         depotMarkerRef.current = null;
@@ -144,37 +136,48 @@ export function SimulatorMap({ pickMode, onPicked }: Props) {
       return;
     }
     if (depotMarkerRef.current) {
-      depotMarkerRef.current.setLatLng([nLat, nLon]);
+      depotMarkerRef.current.setLatLng([lat, lon]);
     } else {
-      depotMarkerRef.current = L.marker([nLat, nLon], {
+      depotMarkerRef.current = L.marker([lat, lon], {
         icon: buildDepotIcon(),
-        title: "Dépôt",
+        title: producer?.name ?? "Dépôt",
         riseOnHover: true,
       }).addTo(map);
     }
-    map.flyTo([nLat, nLon], Math.max(map.getZoom(), 13), { duration: 0.6 });
-  }, [lat, lon]);
+    map.flyTo([lat, lon], Math.max(map.getZoom(), 13), { duration: 0.6 });
+  }, [lat, lon, producer?.name]);
 
-  // Mode pick : clic carte → setValue lat/lon
+  // Pick mode : clic → PUT producer avec nouvelles coords
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    const onClick = (e: LeafletMouseEvent) => {
-      if (!pickMode) return;
-      setValue("lat", e.latlng.lat, { shouldValidate: true });
-      setValue("lon", e.latlng.lng, { shouldValidate: true });
-      onPicked();
+    const onClick = async (e: LeafletMouseEvent) => {
+      if (!state.pickMode || !state.currentProducerId || !producer) return;
+      dispatch({ type: "setPickMode", pickMode: false });
+      try {
+        await updateProducer.mutateAsync({
+          name: producer.name,
+          email: producer.email,
+          address: producer.address ?? undefined,
+          latitude: e.latlng.lat,
+          longitude: e.latlng.lng,
+          trades: producer.trades,
+        });
+        toast.success("Dépôt replacé.");
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : "Déplacement impossible");
+      }
     };
     map.on("click", onClick);
     const el = map.getContainer();
-    el.style.cursor = pickMode ? "crosshair" : "";
+    el.style.cursor = state.pickMode ? "crosshair" : "";
     return () => {
       map.off("click", onClick);
       el.style.cursor = "";
     };
-  }, [pickMode, setValue, onPicked]);
+  }, [state.pickMode, state.currentProducerId, producer, updateProducer, dispatch]);
 
-  // Invalide la size quand le conteneur change (ex: post-lock layout plus large)
+  // Invalide size au resize
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !containerRef.current) return;
@@ -189,10 +192,10 @@ export function SimulatorMap({ pickMode, onPicked }: Props) {
     <div className="relative catl-map-wrapper">
       <div
         ref={containerRef}
-        className="w-full h-[680px] max-h-[calc(100vh-140px)] bg-catl-bg"
+        className="w-full h-[540px] md:h-[680px] md:max-h-[calc(100vh-180px)] bg-catl-bg"
         aria-label="Carte du simulateur"
       />
-      {pickMode && (
+      {state.pickMode && (
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[500] bg-catl-accent text-white text-xs font-bold uppercase tracking-wide px-4 py-2 rounded-full shadow-lg flex items-center gap-2 animate-pulse pointer-events-none">
           <Crosshair className="w-3.5 h-3.5" />
           Clique sur la carte pour placer le dépôt

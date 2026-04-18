@@ -21,19 +21,3 @@ export const test = base.extend<{ cleanPage: Page }>({
 });
 
 export { expect } from "@playwright/test";
-
-/**
- * Remplit le formulaire dépôt avec des valeurs valides minimales.
- */
-export async function fillDepot(page: Page) {
-  await page.goto("/simulator");
-  await page.getByLabel("Nom de la ferme / point de départ").fill("Ferme de test");
-  await page.getByLabel("Adresse du dépôt").fill("Rue des Guillemins, Liège");
-  await page.getByRole("button", { name: /^Maraîchage$/ }).click();
-  // Positionner le dépôt via clic carte (centre de la carte = Liège)
-  await page.getByRole("button", { name: /Placer sur la carte/i }).click();
-  const map = page.locator(".leaflet-container");
-  const box = await map.boundingBox();
-  if (!box) throw new Error("Leaflet container introuvable");
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-}

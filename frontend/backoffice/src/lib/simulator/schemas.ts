@@ -1,60 +1,51 @@
 import { z } from "zod";
-import {
-  DRIVER_TYPES,
-  FUEL_TYPES,
-  PRODUCTION_TYPES,
-  VEHICLE_TYPES,
-} from "./constants";
 
-export const depotSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(2, "Au moins 2 caractères")
-    .max(120, "120 caractères max"),
-  mail: z
-    .string()
-    .trim()
-    .email("Adresse email invalide")
-    .or(z.literal(""))
-    .optional(),
-  addr: z
-    .string()
-    .trim()
-    .min(4, "Adresse requise")
-    .max(300, "300 caractères max"),
-  lat: z
-    .number({ message: "Latitude manquante" })
-    .min(-90)
-    .max(90),
-  lon: z
-    .number({ message: "Longitude manquante" })
-    .min(-180)
-    .max(180),
-  jobs: z
-    .array(z.enum(PRODUCTION_TYPES))
-    .min(1, "Sélectionne au moins un métier"),
+// Schémas zod alignés sur l'OpenAPI (voir lib/apigen/types.ts)
 
-  // Véhicule
-  vehType: z.enum(VEHICLE_TYPES),
-  fuel: z.enum(FUEL_TYPES),
-  vehCons: z.coerce.number().min(0).max(100),
-  fuelPrice: z.coerce.number().min(0).max(100),
-  vehAmort: z.coerce.number().min(0).max(10),
-  vehFrigo: z.boolean(),
+const VEHICLE_TYPES = ["van", "light_truck", "heavy_truck"] as const;
+const FUEL_TYPES = [
+  "diesel",
+  "gasoline",
+  "cng",
+  "electric",
+  "hybrid",
+] as const;
+const DRIVER_TYPES = ["employee", "owner", "external"] as const;
 
-  // Organisation logistique
-  driver: z.enum(DRIVER_TYPES),
-  cH: z.coerce.number().min(0).max(500),
-  tPrep: z.coerce.number().int().min(0).max(600),
-  tLoad: z.coerce.number().int().min(0).max(600),
-
-  // Infra (surfaces en m²)
-  infraSec: z.coerce.number().int().min(0).max(2000),
-  infraFrais: z.coerce.number().int().min(0).max(2000),
-  infraNeg: z.coerce.number().int().min(0).max(2000),
-  infraPrep: z.coerce.number().int().min(0).max(2000),
+export const producerFormSchema = z.object({
+  name: z.string().trim().min(2, "Au moins 2 caractères").max(120),
+  email: z.string().trim().email("Email invalide"),
+  address: z.string().trim().max(300).optional().or(z.literal("")),
+  latitude: z.coerce.number().min(-90).max(90),
+  longitude: z.coerce.number().min(-180).max(180),
+  trades: z.array(z.string().trim().min(1)).default([]),
 });
 
-export type DepotFormInput = z.input<typeof depotSchema>;
-export type DepotFormValues = z.output<typeof depotSchema>;
+export type ProducerFormInput = z.input<typeof producerFormSchema>;
+export type ProducerFormValues = z.output<typeof producerFormSchema>;
+
+export const infrastructureFormSchema = z.object({
+  drySurfaceM2: z.coerce.number().int().min(0).max(5000),
+  freshSurfaceM2: z.coerce.number().int().min(0).max(5000),
+  frozenSurfaceM2: z.coerce.number().int().min(0).max(5000),
+  prepSurfaceM2: z.coerce.number().int().min(0).max(5000),
+});
+
+export type InfrastructureFormInput = z.input<typeof infrastructureFormSchema>;
+export type InfrastructureFormValues = z.output<typeof infrastructureFormSchema>;
+
+export const vehicleFormSchema = z.object({
+  type: z.enum(VEHICLE_TYPES),
+  fuel: z.enum(FUEL_TYPES),
+  refrigerated: z.boolean().default(false),
+  driverType: z.enum(DRIVER_TYPES),
+  consumptionL100Km: z.coerce.number().min(0).max(100),
+  fuelPrice: z.coerce.number().min(0).max(100),
+  amortizationEurKm: z.coerce.number().min(0).max(10),
+  hourlyCost: z.coerce.number().min(0).max(500),
+  prepTimeMin: z.coerce.number().int().min(0).max(600),
+  loadingTimeMin: z.coerce.number().int().min(0).max(600),
+});
+
+export type VehicleFormInput = z.input<typeof vehicleFormSchema>;
+export type VehicleFormValues = z.output<typeof vehicleFormSchema>;

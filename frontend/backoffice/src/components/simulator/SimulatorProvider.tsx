@@ -1,37 +1,35 @@
 "use client";
 
-import { useEffect, useReducer, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useReducer, useState, type ReactNode } from "react";
 import {
   SimulatorContext,
-  loadProjectFromStorage,
-  persistProject,
+  initialState,
+  loadCurrentProducerIdFromStorage,
+  persistCurrentProducerId,
   simulatorReducer,
 } from "@/lib/simulator/state";
-import { emptyProject } from "@/lib/simulator/types";
 
 export function SimulatorProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(simulatorReducer, emptyProject());
+  const [state, dispatch] = useReducer(simulatorReducer, initialState());
   const [hydrated, setHydrated] = useState(false);
 
-  // Hydrate depuis localStorage après mount puis rend les enfants.
-  // Rendre avant l'hydratation ferait doublement initialiser le form
-  // (d'abord à vide, puis aux valeurs réelles) et masquerait les données
-  // persistées le temps d'un flash.
+  // Hydrate currentProducerId depuis localStorage une fois côté client,
+  // puis débloque le rendu des enfants (évite un flash "pas de producteur"
+  // alors que le user en a sélectionné un à la dernière visite).
   useEffect(() => {
-    dispatch({
-      type: "loadFromStorage",
-      project: loadProjectFromStorage(),
-    });
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- flag d'hydratation one-shot, pas de boucle possible
+    const id = loadCurrentProducerIdFromStorage();
+    if (id) dispatch({ type: "setCurrentProducer", producerId: id });
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- flag d'hydratation one-shot
     setHydrated(true);
   }, []);
 
-  // Persiste à chaque mutation une fois hydraté (évite d'écraser le storage
-  // avec l'emptyProject initial pendant la première frame).
+  // Persiste à chaque changement de producteur.
   useEffect(() => {
     if (!hydrated) return;
-    persistProject(state);
-  }, [state, hydrated]);
+    persistCurrentProducerId(state.currentProducerId);
+  }, [state.currentProducerId, hydrated]);
+
+  const value = useMemo(() => ({ state, dispatch }), [state]);
 
   if (!hydrated) {
     return (
@@ -42,7 +40,7 @@ export function SimulatorProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <SimulatorContext.Provider value={{ state, dispatch }}>
+    <SimulatorContext.Provider value={value}>
       {children}
     </SimulatorContext.Provider>
   );

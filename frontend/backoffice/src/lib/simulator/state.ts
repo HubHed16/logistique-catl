@@ -2,103 +2,67 @@
 
 import { createContext, useContext } from "react";
 import type { Dispatch } from "react";
-import {
-  emptyProject,
-  type Depot,
-  type SimulatorProject,
-  type Tour,
-  type TourStats,
-} from "./types";
-import { SIMULATOR_STORAGE_KEY } from "./constants";
+
+// Clé localStorage pour garder le producteur sélectionné entre sessions.
+export const CURRENT_PRODUCER_KEY = "catl.simulator.currentProducerId.v1";
+
+export type SimulatorState = {
+  /** UUID du producteur actuellement sélectionné (ou null si aucun). */
+  currentProducerId: string | null;
+  /** L'utilisateur est en mode "clic carte pour placer le dépôt". */
+  pickMode: boolean;
+  /** Route sélectionnée pour édition (phase 2). */
+  activeRouteId: string | null;
+};
 
 export type SimulatorAction =
-  | { type: "loadFromStorage"; project: SimulatorProject }
-  | { type: "resetAll" }
-  | { type: "updateDepot"; depot: Depot }
-  | { type: "lockDepot" }
-  | { type: "unlockDepot" }
-  | { type: "addTour"; tour: Tour }
-  | { type: "updateTour"; tourId: string; patch: Partial<Omit<Tour, "id">> }
-  | { type: "deleteTour"; tourId: string }
-  | { type: "setActiveTour"; tourId: string | null }
-  | { type: "setTourStats"; tourId: string; stats: TourStats };
+  | { type: "setCurrentProducer"; producerId: string | null }
+  | { type: "setPickMode"; pickMode: boolean }
+  | { type: "setActiveRoute"; routeId: string | null };
 
 export function simulatorReducer(
-  state: SimulatorProject,
+  state: SimulatorState,
   action: SimulatorAction,
-): SimulatorProject {
+): SimulatorState {
   switch (action.type) {
-    case "loadFromStorage":
-      return action.project;
-    case "resetAll":
-      return emptyProject();
-    case "updateDepot":
-      return { ...state, depot: action.depot };
-    case "lockDepot":
-      return { ...state, depotLocked: true };
-    case "unlockDepot":
-      return { ...state, depotLocked: false };
-    case "addTour":
-      return {
-        ...state,
-        tours: [...state.tours, action.tour],
-        activeTourId: action.tour.id,
-      };
-    case "updateTour":
-      return {
-        ...state,
-        tours: state.tours.map((t) =>
-          t.id === action.tourId ? { ...t, ...action.patch } : t,
-        ),
-      };
-    case "deleteTour":
-      return {
-        ...state,
-        tours: state.tours.filter((t) => t.id !== action.tourId),
-        activeTourId:
-          state.activeTourId === action.tourId ? null : state.activeTourId,
-      };
-    case "setActiveTour":
-      return { ...state, activeTourId: action.tourId };
-    case "setTourStats":
-      return {
-        ...state,
-        tours: state.tours.map((t) =>
-          t.id === action.tourId ? { ...t, stats: action.stats } : t,
-        ),
-      };
+    case "setCurrentProducer":
+      return { ...state, currentProducerId: action.producerId };
+    case "setPickMode":
+      return { ...state, pickMode: action.pickMode };
+    case "setActiveRoute":
+      return { ...state, activeRouteId: action.routeId };
   }
 }
 
-// Persistence localStorage ────────────────────────────────────────────────
+export function initialState(): SimulatorState {
+  return {
+    currentProducerId: null,
+    pickMode: false,
+    activeRouteId: null,
+  };
+}
 
-export function loadProjectFromStorage(): SimulatorProject {
-  if (typeof window === "undefined") return emptyProject();
+export function loadCurrentProducerIdFromStorage(): string | null {
+  if (typeof window === "undefined") return null;
   try {
-    const raw = window.localStorage.getItem(SIMULATOR_STORAGE_KEY);
-    if (!raw) return emptyProject();
-    return JSON.parse(raw) as SimulatorProject;
+    return window.localStorage.getItem(CURRENT_PRODUCER_KEY);
   } catch {
-    return emptyProject();
+    return null;
   }
 }
 
-export function persistProject(project: SimulatorProject): void {
+export function persistCurrentProducerId(id: string | null): void {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(
-      SIMULATOR_STORAGE_KEY,
-      JSON.stringify(project),
-    );
+    if (id) window.localStorage.setItem(CURRENT_PRODUCER_KEY, id);
+    else window.localStorage.removeItem(CURRENT_PRODUCER_KEY);
   } catch {
-    // ignore quota errors silencieusement pour ne pas casser l'UX
+    // ignore
   }
 }
 
-// Contexte React ─────────────────────────────────────────────────────────
-
 type SimulatorCtx = {
-  state: SimulatorProject;
+  state: SimulatorState;
   dispatch: Dispatch<SimulatorAction>;
 };
 
