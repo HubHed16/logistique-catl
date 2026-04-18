@@ -11,6 +11,7 @@ import type {
   CustomerCreate,
   DayOfWeek,
   InfrastructureUpdate,
+  OptimizationInput,
   ProducerUpdate,
   RouteCreate,
   RouteStatus,
@@ -547,6 +548,13 @@ export function useCustomers(
       ),
     enabled: !!producerId,
     staleTime: 15_000,
+  });
+}
+
+export function useOptimizeDailyRouting() {
+  return useMutation({
+    mutationFn: async (body: OptimizationInput) =>
+      unwrap(await apiClient.POST("/optimization/daily-routing", { body })),
   });
 }
 

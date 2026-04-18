@@ -33,6 +33,15 @@ export type ApiStop = components["schemas"]["Stop"];
 export type StopCreate = components["schemas"]["StopCreate"];
 export type StopUpdate = components["schemas"]["StopUpdate"];
 
+export type OptimizationInput = components["schemas"]["OptimizationInput"];
+export type OptimizationResult = components["schemas"]["OptimizationResult"];
+export type OptimizationStopAssignment =
+  components["schemas"]["OptimizationStopAssignment"];
+export type OptimizationProducerHubTransfer =
+  components["schemas"]["OptimizationProducerHubTransfer"];
+export type OptimizationHubPickingList =
+  components["schemas"]["OptimizationHubPickingList"];
+
 export type Customer = components["schemas"]["Customer"];
 export type CustomerCreate = components["schemas"]["CustomerCreate"];
 export type CustomerUpdate = components["schemas"]["CustomerUpdate"];
