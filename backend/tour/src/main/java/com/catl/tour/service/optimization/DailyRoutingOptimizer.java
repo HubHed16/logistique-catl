@@ -141,10 +141,10 @@ public class DailyRoutingOptimizer {
         }
 
         // 2) Mutualisation last-mile: scale GLOBALE par hub (tous producteurs confondus).
-        //    Seuls les stops géographiquement plus proches du hub que de leur dépôt entrent
-        //    dans la simulation — les stops "loin du hub" gonfleraient la scale et masqueraient
-        //    le vrai gain de mutualisation pour les stops proches.
-        Map<UUID, Double> globalHubScale = computeGlobalHubScale(stops, hubs, depots);
+        //    On simule une tournée NN depuis le hub couvrant TOUS les stops: si deux producteurs
+        //    ont des stops dans le même secteur, un seul véhicule peut les livrer ensemble,
+        //    ce qui est le bénéfice central du hub. Une scale par routeId manquerait ce gain.
+        Map<UUID, Double> globalHubScale = computeGlobalHubScale(stops, hubs);
         for (int i = 0; i < n; i++) {
             StopDemand s = stops.get(i);
             TravelCostParams stopParams = vehicleCostProvider.paramsForVehicle(s.vehicleId(), avgSpeedKmPerHour);
@@ -672,56 +672,46 @@ public class DailyRoutingOptimizer {
             for (GeoPoint p : pts) baselineKm += 2.0 * distance.km(depot, p);
 
             double scale = (baselineKm > 0) ? (tourKm / baselineKm) : 1.0;
-            // Pas de clamp bas agressif: le clamp 0.35 rendait le direct artificiellement
-            // bon marché pour les stops isolés géographiquement, empêchant le hub de gagner.
-            // On garde seulement un plancher de sécurité numérique.
-            scale = Math.max(0.10, Math.min(1.0, scale));
+            // Borne: éviter de trop "casser" le MILP.
+            scale = Math.max(0.35, Math.min(1.0, scale));
             out.put(routeId, scale);
         }
         return out;
     }
 
     /**
-     * Facteur de mutualisation last-mile par hub, calculé uniquement sur les stops
-     * géographiquement plus proches du hub que de leur propre dépôt.
+     * Facteur de mutualisation last-mile par hub, calculé sur l'ensemble des stops
+     * (tous producteurs confondus).
      *
-     * Filtrer ainsi évite qu'un stop "loin du hub" (et donc peu susceptible de l'utiliser)
-     * gonfle la tournée simulée et masque le gain de consolidation pour les stops proches.
-     * Si aucun stop n'est plus proche du hub que de son dépôt, on retourne scale = 1.0
-     * (hub peu attractif pour ce secteur).
+     * Principe: on simule une tournée NN depuis le hub couvrant tous les stops potentiels,
+     * puis on compare au coût naïf (AR individuel hub↔stop pour chaque stop).
+     * Ce ratio reflète le gain de consolider plusieurs producteurs en une seule tournée last-mile.
+     *
+     * Scale ∈ [0.25, 1.0] — plus il y a de stops proches les uns des autres, plus le scale
+     * est bas, et plus le hub devient attractif dans le MILP.
      */
     private Map<UUID, Double> computeGlobalHubScale(
             List<StopDemand> stops,
-            List<HubCandidate> hubs,
-            Map<UUID, GeoPoint> depots
+            List<HubCandidate> hubs
     ) {
+        if (stops.size() < 2) {
+            Map<UUID, Double> trivial = new HashMap<>();
+            for (HubCandidate h : hubs) trivial.put(h.infrastructureId(), 1.0);
+            return trivial;
+        }
+
+        List<GeoPoint> pts = new ArrayList<>(stops.size());
+        for (StopDemand s : stops) pts.add(new GeoPoint(s.latitude(), s.longitude()));
+        DistanceMatrix dm = DistanceMatrix.compute(distance, pts, pts);
+
         Map<UUID, Double> out = new HashMap<>();
         for (HubCandidate h : hubs) {
             GeoPoint hub = h.location();
 
-            // Stops pour lesquels le hub est plus proche que leur dépôt
-            List<GeoPoint> hubStops = new ArrayList<>();
-            for (StopDemand s : stops) {
-                GeoPoint depot = depots.get(s.producerId());
-                if (depot == null) continue;
-                GeoPoint pt = new GeoPoint(s.latitude(), s.longitude());
-                if (distance.km(hub, pt) < distance.km(depot, pt)) {
-                    hubStops.add(pt);
-                }
-            }
-
-            if (hubStops.size() < 2) {
-                // Pas assez de stops proches du hub: scale = 1.0 (pas de mutualisation)
-                out.put(h.infrastructureId(), 1.0);
-                continue;
-            }
-
-            DistanceMatrix dm = DistanceMatrix.compute(distance, hubStops, hubStops);
-
             int startIndex = 0;
             double bestKm = Double.POSITIVE_INFINITY;
-            for (int i = 0; i < hubStops.size(); i++) {
-                double km = distance.km(hub, hubStops.get(i));
+            for (int i = 0; i < pts.size(); i++) {
+                double km = distance.km(hub, pts.get(i));
                 if (km < bestKm) { bestKm = km; startIndex = i; }
             }
 
@@ -730,17 +720,17 @@ public class DailyRoutingOptimizer {
             GeoPoint prev = hub;
             double tourKm = 0.0;
             for (int idx : orderIdx) {
-                GeoPoint next = hubStops.get(idx);
+                GeoPoint next = pts.get(idx);
                 tourKm += distance.km(prev, next);
                 prev = next;
             }
             tourKm += distance.km(prev, hub);
 
             double baselineKm = 0.0;
-            for (GeoPoint p : hubStops) baselineKm += 2.0 * distance.km(hub, p);
+            for (GeoPoint p : pts) baselineKm += 2.0 * distance.km(hub, p);
 
             double scale = (baselineKm > 0) ? (tourKm / baselineKm) : 1.0;
-            scale = Math.max(0.15, Math.min(1.0, scale));
+            scale = Math.max(0.25, Math.min(1.0, scale));
             out.put(h.infrastructureId(), scale);
         }
         return out;

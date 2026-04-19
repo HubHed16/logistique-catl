@@ -12,7 +12,6 @@ import {
   Users,
   Warehouse,
 } from "lucide-react";
-import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
@@ -236,7 +235,7 @@ function ResultView({ result }: { result: OptimizationResult }) {
         </div>
       </section>
 
-      {result.assignments.length > 0 && <OptimizationCharts result={result} />}
+      {result.assignments.length > 0}
 
       {usedHubs.length > 0 && (
         <section className="catl-section catl-section--accent">
