@@ -12,6 +12,7 @@ public record TravelCostParams(
         double consumptionEmptyLPer100Km,
         double consumptionFullLPer100Km,
         double driverCostEurPerHour,
+        double amortizationEurKm,
         double avgSpeedKmPerHour,
         double vehicleCapacityVolume
 ) {
@@ -20,6 +21,7 @@ public record TravelCostParams(
         if (consumptionEmptyLPer100Km < 0) throw new IllegalArgumentException("consumptionEmptyLPer100Km must be >= 0");
         if (consumptionFullLPer100Km < 0) throw new IllegalArgumentException("consumptionFullLPer100Km must be >= 0");
         if (driverCostEurPerHour < 0) throw new IllegalArgumentException("driverCostEurPerHour must be >= 0");
+        if (amortizationEurKm < 0) throw new IllegalArgumentException("amortizationEurKm must be >= 0");
         if (avgSpeedKmPerHour <= 0) throw new IllegalArgumentException("avgSpeedKmPerHour must be > 0");
         if (vehicleCapacityVolume <= 0) throw new IllegalArgumentException("vehicleCapacityVolume must be > 0");
     }

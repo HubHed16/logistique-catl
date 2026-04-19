@@ -50,10 +50,12 @@ public class CostModel {
         double consLPer100 = params.consumptionLPer100KmForVolume(volume);
         double fuelCost = roundTripKm * (consLPer100 / 100.0) * params.fuelPriceEurPerL();
 
+        double amortCost = roundTripKm * params.amortizationEurKm();
+
         double hours = roundTripKm / params.avgSpeedKmPerHour();
         double driverCost = hours * params.driverCostEurPerHour();
 
-        return fuelCost + driverCost;
+        return fuelCost + amortCost + driverCost;
     }
 
     public double directCost(

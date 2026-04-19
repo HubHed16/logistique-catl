@@ -168,8 +168,8 @@ public class DailyRoutingOptimizer {
             }
             TravelCostParams producerParams;
             if (producerVehicleId == null) {
-                log.warn("No vehicle found for producer {} — using default cost parameters (8 L/100km, 1.80 €/L, 25 €/h)", pid);
-                producerParams = new TravelCostParams(1.80, 8.0, 8.0, 25.0, avgSpeedKmPerHour, 1.0);
+                log.warn("No vehicle found for producer {} — using default cost parameters (8 L/100km, 1.80 €/L, 25 €/h, 0.25 €/km amort)", pid);
+                producerParams = new TravelCostParams(1.80, 8.0, 8.0, 25.0, 0.25, avgSpeedKmPerHour, 1.0);
             } else {
                 producerParams = vehicleCostProvider.paramsForVehicle(producerVehicleId, avgSpeedKmPerHour);
             }
