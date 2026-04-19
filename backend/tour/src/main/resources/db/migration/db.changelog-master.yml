@@ -7,3 +7,5 @@ databaseChangeLog:
       file: db/migration/changelogs/0003-remove-product.yml
   - include:
       file: db/migration/changelogs/0004-seed-optimization-demo.yml
+  - include:
+      file: db/migration/changelogs/0005-update-infrastructure-schema.yml

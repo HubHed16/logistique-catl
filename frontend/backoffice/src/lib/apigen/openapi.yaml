@@ -60,25 +60,55 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ProducerPage' }
 
-  # ── Infrastructure ────────────────────────────────────────
-  /producers/{producerId}/infrastructure:
-    parameters:
-      - $ref: '#/components/parameters/ProducerId'
+  # ── Infrastructure (Entrepôts) ───────────────────────────
+  /infrastructures:
     get:
       tags: [Infrastructure]
-      summary: Get infrastructure for a producer
+      summary: List infrastructures
+      operationId: listInfrastructures
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Page of infrastructures
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InfrastructurePage' }
+    post:
+      tags: [Infrastructure]
+      summary: Create an infrastructure
+      operationId: createInfrastructure
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InfrastructureCreate' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Infrastructure' }
+
+  /infrastructures/{infrastructureId}:
+    parameters:
+      - $ref: '#/components/parameters/InfrastructureId'
+    get:
+      tags: [Infrastructure]
+      summary: Get an infrastructure
       operationId: getInfrastructure
       responses:
         '200':
-          description: Infrastructure record
+          description: Infrastructure
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Infrastructure' }
         '404': { $ref: '#/components/responses/NotFound' }
     put:
       tags: [Infrastructure]
-      summary: Create or update infrastructure (upsert)
-      operationId: upsertInfrastructure
+      summary: Update an infrastructure
+      operationId: updateInfrastructure
       requestBody:
         required: true
         content:
@@ -86,10 +116,16 @@ paths:
             schema: { $ref: '#/components/schemas/InfrastructureUpdate' }
       responses:
         '200':
-          description: Saved infrastructure
+          description: Updated
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Infrastructure' }
+    delete:
+      tags: [Infrastructure]
+      summary: Delete an infrastructure
+      operationId: deleteInfrastructure
+      responses:
+        '204': { description: Deleted }
 
   # ── Vehicles ──────────────────────────────────────────────
   /vehicles:
@@ -760,6 +796,11 @@ components:
       in: path
       required: true
       schema: { type: string, format: uuid }
+    InfrastructureId:
+      name: infrastructureId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
 
   # ── Reusable responses ────────────────────────────────────
   responses:
@@ -797,6 +838,8 @@ components:
         address:     { type: string, nullable: true }
         province:    { type: string, nullable: true }
         isBio:       { type: boolean, default: false }
+        latitude:    { type: number, format: double, minimum: -90,  maximum: 90,  nullable: true }
+        longitude:   { type: number, format: double, minimum: -180, maximum: 180, nullable: true }
 
     ProducerPage:
       allOf:
@@ -854,10 +897,9 @@ components:
     # ── Infrastructure ────────────────────────────────────
     Infrastructure:
       type: object
-      required: [drySurfaceM2, freshSurfaceM2, frozenSurfaceM2, prepSurfaceM2]
+      required: [id, drySurfaceM2, freshSurfaceM2, frozenSurfaceM2, prepSurfaceM2]
       properties:
         id:              { type: string, format: uuid, readOnly: true }
-        producerId:      { type: string, format: uuid, readOnly: true }
         drySurfaceM2:    { type: integer, minimum: 0 }
         freshSurfaceM2:  { type: integer, minimum: 0 }
         frozenSurfaceM2: { type: integer, minimum: 0 }
@@ -865,6 +907,17 @@ components:
         depotLatitude:   { type: number, format: double, minimum: -90,  maximum: 90,  nullable: true }
         depotLongitude:  { type: number, format: double, minimum: -180, maximum: 180, nullable: true }
         updatedAt:       { type: string, format: date-time, readOnly: true }
+
+    InfrastructureCreate:
+      type: object
+      required: [drySurfaceM2, freshSurfaceM2, frozenSurfaceM2, prepSurfaceM2]
+      properties:
+        drySurfaceM2:    { type: integer, minimum: 0, default: 0 }
+        freshSurfaceM2:  { type: integer, minimum: 0, default: 0 }
+        frozenSurfaceM2: { type: integer, minimum: 0, default: 0 }
+        prepSurfaceM2:   { type: integer, minimum: 0, default: 0 }
+        depotLatitude:   { type: number, format: double, minimum: -90,  maximum: 90,  nullable: true }
+        depotLongitude:  { type: number, format: double, minimum: -180, maximum: 180, nullable: true }
 
     InfrastructureUpdate:
       type: object
@@ -875,6 +928,15 @@ components:
         prepSurfaceM2:   { type: integer, minimum: 0 }
         depotLatitude:   { type: number, format: double, minimum: -90,  maximum: 90,  nullable: true }
         depotLongitude:  { type: number, format: double, minimum: -180, maximum: 180, nullable: true }
+
+    InfrastructurePage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Infrastructure' }
 
     # ── Vehicle ───────────────────────────────────────────
     Vehicle:
@@ -1255,6 +1317,11 @@ components:
           default: 10000
           minimum: 100
           description: Solver time budget in milliseconds
+        avgSpeedKmPerHour:
+          type: number
+          format: double
+          default: 50
+          description: Vitesse moyenne (km/h) utilisée pour estimer le temps de trajet (coût chauffeur)
 
     OptimizationResult:
       type: object
@@ -1291,6 +1358,52 @@ components:
           type: array
           description: Per-hub last-mile manifest (all producers combined)
           items: { $ref: '#/components/schemas/OptimizationHubPickingList' }
+        tours:
+          type: array
+          description: Reconstructed tours (loops) for mapping/visualization
+          items: { $ref: '#/components/schemas/OptimizationTour' }
+
+    OptimizationTourType:
+      type: string
+      enum: [DIRECT, BULK_TRANSFER, LAST_MILE]
+
+    OptimizationTour:
+      type: object
+      required:
+        - tourId
+        - type
+        - start
+        - end
+        - orderedStopIds
+        - legs
+        - totalKm
+        - totalTravelCostEur
+      properties:
+        tourId: { type: string }
+        type: { $ref: '#/components/schemas/OptimizationTourType' }
+        producerId: { type: string, format: uuid, nullable: true }
+        hubId: { type: string, format: uuid, nullable: true }
+        start: { $ref: '#/components/schemas/Waypoint' }
+        end: { $ref: '#/components/schemas/Waypoint' }
+        orderedStopIds:
+          type: array
+          items: { type: string, format: uuid }
+        legs:
+          type: array
+          items: { $ref: '#/components/schemas/OptimizationTourLeg' }
+        totalKm: { type: number, format: double }
+        totalTravelCostEur: { type: number, format: double }
+
+    OptimizationTourLeg:
+      type: object
+      required: [from, to, km, travelCostEur]
+      properties:
+        fromStopId: { type: string, format: uuid, nullable: true }
+        toStopId: { type: string, format: uuid, nullable: true }
+        from: { $ref: '#/components/schemas/Waypoint' }
+        to: { $ref: '#/components/schemas/Waypoint' }
+        km: { type: number, format: double }
+        travelCostEur: { type: number, format: double }
 
     OptimizationStopAssignment:
       type: object
@@ -1315,6 +1428,16 @@ components:
           format: double
           nullable: true
           description: Cost of the chosen hub last-mile; null if mode=DIRECT
+        latitude:
+          type: number
+          format: double
+          nullable: true
+          description: Geocoded stop location (for mapping purposes); null if not geocoded
+        longitude:
+          type: number
+          format: double
+          nullable: true
+          description: Geocoded stop location (for mapping purposes); null if not geocoded
 
     OptimizationProducerHubTransfer:
       type: object
@@ -1333,7 +1456,6 @@ components:
       type: object
       required:
         - hubId
-        - hubProducerId
         - latitude
         - longitude
         - stopIds
@@ -1342,7 +1464,6 @@ components:
         - openingCostEur
       properties:
         hubId:         { type: string, format: uuid }
-        hubProducerId: { type: string, format: uuid }
         latitude:      { type: number, format: double }
         longitude:     { type: number, format: double }
         stopIds:

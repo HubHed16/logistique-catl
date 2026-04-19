@@ -25,8 +25,6 @@ public class ProducerController implements ProducerApi {
         int pageNumber = offset / limit;
         List<WmsClient.ProducerDto> dtoList = wmsClient.getProducers(pageNumber, limit);
 
-        System.out.println(dtoList);
-
         if (dtoList == null || dtoList.isEmpty()) {
             return ResponseEntity.ok(new ProducerPage(0, limit, offset));
         }
@@ -39,6 +37,8 @@ public class ProducerController implements ProducerApi {
                     p.setContact(dto.contact());
                     p.setAddress(dto.address());
                     p.setProvince(dto.province());
+                    p.latitude(dto.latitude());
+                    p.longitude(dto.longitude());
                     p.setIsBio(Optional.ofNullable(dto.is_bio()).orElse(false));
                     return p;
                 })

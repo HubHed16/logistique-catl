@@ -9,7 +9,20 @@
 
 import type { components } from "@/lib/apigen/types";
 
-type Producer = components["schemas"]["Producer"];
+// NOTE: le schéma OpenAPI de tour n'inclut pas latitude/longitude.
+// Ici on consomme wms-api qui, lui, renvoie ces champs : on utilise donc
+// un type local cohérent avec wms-api.
+
+type ProducerWithCoords = {
+  readonly id: string;
+  name: string;
+  contact?: string | null;
+  address?: string | null;
+  province?: string | null;
+  isBio: boolean;
+  latitude?: number | null;
+  longitude?: number | null;
+};
 
 // Forme retournée par wms-api (et envoyée en PATCH).
 type WmsProducerDto = {
@@ -19,9 +32,11 @@ type WmsProducerDto = {
   address?: string | null;
   province?: string | null;
   is_bio?: boolean;
+  latitude?: number | null;
+  longitude?: number | null;
 };
 
-function toProducer(dto: WmsProducerDto): Producer {
+function toProducer(dto: WmsProducerDto): ProducerWithCoords {
   return {
     id: dto.id ?? "",
     name: dto.name,
@@ -29,10 +44,14 @@ function toProducer(dto: WmsProducerDto): Producer {
     address: dto.address ?? null,
     province: dto.province ?? null,
     isBio: dto.is_bio ?? false,
+    latitude: dto.latitude ?? null,
+    longitude: dto.longitude ?? null,
   };
 }
 
-function toWmsDto(p: Omit<Producer, "id"> & { id?: string }): WmsProducerDto {
+function toWmsDto(
+  p: Omit<ProducerWithCoords, "id"> & { id?: string },
+): WmsProducerDto {
   return {
     id: p.id ?? null,
     name: p.name,
@@ -40,6 +59,8 @@ function toWmsDto(p: Omit<Producer, "id"> & { id?: string }): WmsProducerDto {
     address: p.address ?? null,
     province: p.province ?? null,
     is_bio: p.isBio,
+    latitude: p.latitude ?? null,
+    longitude: p.longitude ?? null,
   };
 }
 
@@ -65,7 +86,7 @@ async function parseError(res: Response, fallback: string): Promise<never> {
 export async function wmsListProducers(
   page = 0,
   size = 100,
-): Promise<Producer[]> {
+): Promise<ProducerWithCoords[]> {
   const res = await fetch(`/api/wms/producers?page=${page}&size=${size}`);
   if (res.status === 204) return [];
   if (!res.ok) await parseError(res, "Chargement des producteurs impossible");
@@ -73,7 +94,9 @@ export async function wmsListProducers(
   return data.map(toProducer);
 }
 
-export async function wmsGetProducer(id: string): Promise<Producer | null> {
+export async function wmsGetProducer(
+  id: string,
+): Promise<ProducerWithCoords | null> {
   const res = await fetch(`/api/wms/producers/${id}`);
   if (res.status === 404) return null;
   if (!res.ok) await parseError(res, "Producteur introuvable");
@@ -82,8 +105,8 @@ export async function wmsGetProducer(id: string): Promise<Producer | null> {
 }
 
 export async function wmsCreateProducer(
-  body: Omit<Producer, "id">,
-): Promise<Producer> {
+  body: Omit<ProducerWithCoords, "id">,
+): Promise<ProducerWithCoords> {
   const res = await fetch(`/api/wms/producers`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -96,8 +119,8 @@ export async function wmsCreateProducer(
 
 export async function wmsUpdateProducer(
   id: string,
-  body: Omit<Producer, "id">,
-): Promise<Producer> {
+  body: Omit<ProducerWithCoords, "id">,
+): Promise<ProducerWithCoords> {
   const res = await fetch(`/api/wms/producers/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },

@@ -2,7 +2,7 @@ package com.catl.tour.service.optimization;
 
 import org.springframework.stereotype.Component;
 
-@Component
+@Component("haversineDistanceProvider")
 public class HaversineDistanceProvider implements DistanceProvider {
 
     private static final double EARTH_RADIUS_KM = 6371.0088;

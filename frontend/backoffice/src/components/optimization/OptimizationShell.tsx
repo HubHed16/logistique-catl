@@ -25,7 +25,7 @@ import type {
   OptimizationResult,
   OptimizationStopAssignment,
 } from "@/lib/simulator/types";
-import { OptimizationCharts } from "@/components/optimization/OptimizationCharts";
+import dynamic from "next/dynamic";
 
 const OptimizationMap = dynamic(
   () =>
@@ -82,6 +82,7 @@ export function OptimizationShell() {
         handlingFeePerUnit: 0,
         openingFee: 0,
         maxSolveTimeMs: 10000,
+        avgSpeedKmPerHour: 50,
       });
       setResult(res);
       toast.success(
@@ -173,6 +174,11 @@ function ResultView({ result }: { result: OptimizationResult }) {
     [result.transfers],
   );
 
+  const hasAnyMapData =
+    (result.assignments?.length ?? 0) > 0 ||
+    usedHubs.length > 0 ||
+    activeTransfers.length > 0;
+
   return (
     <div className="space-y-5">
       <section className={`catl-section catl-section--${tone}`}>
@@ -245,16 +251,17 @@ function ResultView({ result }: { result: OptimizationResult }) {
         </section>
       )}
 
-      {activeTransfers.length > 0 && (
+      {hasAnyMapData && (
         <section className="catl-section catl-section--primary">
           <span className="catl-section-pill">
             <Truck className="w-3 h-3" /> Carte des flux
           </span>
           <div className="mt-1">
             <OptimizationMap
-              hubs={usedHubs}
-              transfers={activeTransfers}
+              hubs={result.pickingLists}
+              transfers={result.transfers}
               assignments={result.assignments}
+              tours={result.tours}
             />
           </div>
         </section>
@@ -285,14 +292,39 @@ function ResultView({ result }: { result: OptimizationResult }) {
   );
 }
 
+function Kpi({
+  label,
+  value,
+  icon,
+  emphasis,
+}: {
+  label: string;
+  value: string;
+  icon?: React.ReactNode;
+  emphasis?: boolean;
+}) {
+  return (
+    <div className="bg-white rounded-md border border-gray-200 px-3 py-2">
+      <div className="text-[10px] uppercase tracking-wide text-catl-text/70 font-semibold flex items-center gap-1.5">
+        {icon}
+        {label}
+      </div>
+      <div
+        className={`mt-0.5 font-bold ${
+          emphasis ? "text-lg text-catl-accent" : "text-sm text-catl-primary"
+        }`}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
 function HubCard({ hub }: { hub: OptimizationHubPickingList }) {
   return (
     <div className="bg-white rounded-md border border-gray-200 p-3">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="font-bold text-sm text-catl-primary font-mono">
-            Hub {shortId(hub.hubId)}
-          </div>
           <div className="text-[11px] text-catl-text/80 font-mono mt-0.5">
             {NUM.format(hub.latitude)}, {NUM.format(hub.longitude)}
           </div>
@@ -330,9 +362,6 @@ function HubCard({ hub }: { hub: OptimizationHubPickingList }) {
         <div>
           <div className="text-[10px] uppercase tracking-wide text-catl-text/60 font-semibold">
             Hub-producteur
-          </div>
-          <div className="font-mono text-catl-text">
-            {shortId(hub.hubProducerId)}
           </div>
         </div>
       </div>

@@ -1,0 +1,2 @@
+ALTER TABLE producer ADD COLUMN latitude NUMERIC(10,6);
+ALTER TABLE producer ADD COLUMN longitude NUMERIC(10,6);

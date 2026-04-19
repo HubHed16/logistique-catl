@@ -27,7 +27,6 @@ public class ProducerService {
         return producerRepository.findById(id).map(producerMapper::getDto);
     }
 
-
     public ProducerDto saveOrUpdateProducer(UUID producerId, ProducerDto producerDto) {
            Producer producerDao;
            if (producerId == null) {
@@ -41,6 +40,8 @@ public class ProducerService {
            producerDao.setAddress(producerDto.address());
            producerDao.setProvince(producerDto.province());
            producerDao.setBio(producerDto.bio());
+           producerDao.setLatitude(producerDto.latitude());
+           producerDao.setLongitude(producerDto.longitude());
            Producer saved = producerRepository.save(producerDao);
            return producerMapper.getDto(saved);
     }

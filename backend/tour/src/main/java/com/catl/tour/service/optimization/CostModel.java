@@ -12,11 +12,6 @@ public class CostModel {
 
     private static final double DEFAULT_PRODUCER_COST_PER_KM = 0.60;
 
-    private static final double HUB_VEHICLE_CONSUMPTION_L_100KM = 8.0;
-    private static final double HUB_VEHICLE_FUEL_PRICE_EUR_L = 1.80;
-    private static final double HUB_COST_PER_KM =
-            HUB_VEHICLE_CONSUMPTION_L_100KM * HUB_VEHICLE_FUEL_PRICE_EUR_L / 100.0;
-
     private final JdbcClient jdbc;
     private final DistanceProvider distance;
 
@@ -44,37 +39,52 @@ public class CostModel {
                 .orElse(DEFAULT_PRODUCER_COST_PER_KM);
     }
 
-    public double hubCostPerKm() {
-        return HUB_COST_PER_KM;
+    /**
+     * Coût d'un aller-retour sur une distance donnée, en tenant compte:
+     * - Carburant: km * conso(L/100km) * prix(L)
+     * - Chauffeur: temps(km/vitesse) * €/h
+     */
+    public double roundTripTravelCost(double oneWayKm, double volume, TravelCostParams params) {
+        double roundTripKm = 2.0 * oneWayKm;
+
+        double consLPer100 = params.consumptionLPer100KmForVolume(volume);
+        double fuelCost = roundTripKm * (consLPer100 / 100.0) * params.fuelPriceEurPerL();
+
+        double hours = roundTripKm / params.avgSpeedKmPerHour();
+        double driverCost = hours * params.driverCostEurPerHour();
+
+        return fuelCost + driverCost;
     }
 
     public double directCost(
             GeoPoint depot,
             StopDemand stop,
-            double producerCostPerKm
+            TravelCostParams params
     ) {
         double km = distance.km(depot.latitude(), depot.longitude(), stop.latitude(), stop.longitude());
-        return 2.0 * km * producerCostPerKm * stop.volume();
+        return roundTripTravelCost(km, stop.volume(), params);
     }
 
     public double hubAssignCost(
             GeoPoint hub,
             StopDemand stop,
-            double hubCostPerKm,
+            TravelCostParams params,
             double handlingFeePerUnit
     ) {
         double km = distance.km(hub.latitude(), hub.longitude(), stop.latitude(), stop.longitude());
-        return 2.0 * km * hubCostPerKm * stop.volume()
+        return roundTripTravelCost(km, stop.volume(), params)
              + handlingFeePerUnit * stop.volume();
     }
 
-    public double hubFixedCost(
+    /**
+     * Trajet rajouté: transfert dépôt ↔ hub (aller-retour), payé une fois par (producer, hub) utilisé.
+     */
+    public double hubTransferCost(
             GeoPoint depot,
             GeoPoint hub,
-            double producerCostPerKm,
-            double openingFee
+            TravelCostParams params
     ) {
         double km = distance.km(depot.latitude(), depot.longitude(), hub.latitude(), hub.longitude());
-        return 2.0 * km * producerCostPerKm + openingFee;
+        return roundTripTravelCost(km, 0.0, params);
     }
 }

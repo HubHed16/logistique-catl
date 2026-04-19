@@ -6,9 +6,10 @@ public record OptimizationRequest(
         LocalDate date,
         double handlingFeePerUnit,
         double openingFee,
-        long maxSolveTimeMs
+        long maxSolveTimeMs,
+        double avgSpeedKmPerHour
 ) {
     public static OptimizationRequest of(LocalDate date) {
-        return new OptimizationRequest(date, 0.0, 0.0, 10_000L);
+        return new OptimizationRequest(date, 0.0, 0.0, 10_000L, 50.0);
     }
 }

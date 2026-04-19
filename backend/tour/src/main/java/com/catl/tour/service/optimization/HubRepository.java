@@ -1,58 +1,49 @@
 package com.catl.tour.service.optimization;
 
+import com.catl.tour.client.WmsClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
 @Repository
 class HubRepository {
 
-    private final JdbcClient jdbc;
+    private static final Logger log = LoggerFactory.getLogger(HubRepository.class);
 
-    HubRepository(JdbcClient jdbc) {
+    private final JdbcClient jdbc;
+    private final WmsClient wmsClient;
+
+    HubRepository(JdbcClient jdbc, WmsClient wmsClient) {
         this.jdbc = jdbc;
+        this.wmsClient = wmsClient;
     }
 
-    Map<UUID, GeoPoint> findDepots(Set<UUID> producerIds) {
-        if (producerIds.isEmpty()) return Map.of();
-        Map<UUID, GeoPoint> out = new HashMap<>();
-        jdbc.sql("""
-                SELECT producer_id, depot_latitude, depot_longitude
-                FROM infrastructure
-                WHERE producer_id IN (:producerIds)
-                  AND depot_latitude IS NOT NULL
-                  AND depot_longitude IS NOT NULL
-                """)
-                .param("producerIds", producerIds)
-                .query((rs, n) -> {
-                    out.put(
-                            rs.getObject("producer_id", UUID.class),
-                            new GeoPoint(
-                                    rs.getBigDecimal("depot_latitude").doubleValue(),
-                                    rs.getBigDecimal("depot_longitude").doubleValue()
-                            )
-                    );
-                    return null;
-                })
-                .list();
-        return out;
+    /**
+     * Dépôt par producteur.
+     *
+     * IMPORTANT: le coût DIRECT est calculé depuis ce dépôt. On doit donc utiliser
+     * les coordonnées réelles du producteur (table `producer` côté WMS), plutôt
+     * qu'un dépôt global partagé.
+     */
+    java.util.Map<UUID, GeoPoint> findDepots(Set<UUID> producerIds) {
+        return wmsClient.getProducerDepots(producerIds);
     }
 
     List<HubCandidate> findAll(double handlingFeePerUnit, double openingFee) {
-        return jdbc.sql("""
-                SELECT id, producer_id, depot_latitude, depot_longitude
+        List<HubCandidate> result = jdbc.sql("""
+                SELECT id, depot_latitude, depot_longitude
                 FROM infrastructure
                 WHERE depot_latitude IS NOT NULL
                   AND depot_longitude IS NOT NULL
                 """)
                 .query((rs, n) -> new HubCandidate(
                         rs.getObject("id", UUID.class),
-                        rs.getObject("producer_id", UUID.class),
+                        null,
                         new GeoPoint(
                                 rs.getBigDecimal("depot_latitude").doubleValue(),
                                 rs.getBigDecimal("depot_longitude").doubleValue()
@@ -61,5 +52,13 @@ class HubRepository {
                         openingFee
                 ))
                 .list();
+
+        if (result.isEmpty()) {
+            log.warn("No hub candidates found in infrastructure table — either no records exist or all records have null depot coordinates");
+        } else {
+            log.debug("Loaded {} hub candidate(s) from infrastructure table", result.size());
+        }
+
+        return result;
     }
 }

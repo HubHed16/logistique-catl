@@ -19,11 +19,14 @@ public class DailyDemandLoader {
     }
 
     public List<StopDemand> loadForDate(LocalDate date) {
-        return jdbc.sql("""
+        // Certains analyseurs IDE ont du mal avec les paramètres nommés dans les text-blocks.
+        // On garde un nom unique et on bind explicitement.
+        String sql = """
                 SELECT
                     s.id            AS stop_id,
                     s.route_id      AS route_id,
                     r.producer_id   AS producer_id,
+                    r.vehicle_id    AS vehicle_id,
                     s.sequence      AS sequence,
                     COALESCE(s.latitude,  c.latitude)  AS latitude,
                     COALESCE(s.longitude, c.longitude) AS longitude,
@@ -32,15 +35,17 @@ public class DailyDemandLoader {
                 JOIN stop s            ON s.route_id = r.id
                 LEFT JOIN stop_item si ON si.stop_id = s.id
                 LEFT JOIN customer c   ON c.id       = s.customer_id
-                WHERE r.scheduled_date = :date
+                WHERE r.scheduled_date = :scheduledDate
                   AND r.deleted_at     IS NULL
                   AND s.operation      = 'delivery'
-                GROUP BY s.id, s.route_id, r.producer_id, s.sequence, s.latitude, s.longitude, c.latitude, c.longitude
+                GROUP BY s.id, s.route_id, r.producer_id, r.vehicle_id, s.sequence, s.latitude, s.longitude, c.latitude, c.longitude
                 HAVING COALESCE(s.latitude,  c.latitude)  IS NOT NULL
                    AND COALESCE(s.longitude, c.longitude) IS NOT NULL
                 ORDER BY r.producer_id, s.route_id, s.sequence
-                """)
-                .param("date", date)
+                """;
+
+        return jdbc.sql(sql)
+                .param("scheduledDate", date)
                 .query(this::mapRow)
                 .list();
     }
@@ -50,6 +55,7 @@ public class DailyDemandLoader {
                 rs.getObject("stop_id", UUID.class),
                 rs.getObject("route_id", UUID.class),
                 rs.getObject("producer_id", UUID.class),
+                rs.getObject("vehicle_id", UUID.class),
                 rs.getInt("sequence"),
                 rs.getBigDecimal("latitude").doubleValue(),
                 rs.getBigDecimal("longitude").doubleValue(),

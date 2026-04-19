@@ -6,6 +6,7 @@ public record StopDemand(
         UUID stopId,
         UUID routeId,
         UUID producerId,
+        UUID vehicleId,
         int sequence,
         double latitude,
         double longitude,

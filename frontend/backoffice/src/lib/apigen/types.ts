@@ -21,21 +21,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/producers/{producerId}/infrastructure": {
+    "/infrastructures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List infrastructures */
+        get: operations["listInfrastructures"];
+        put?: never;
+        /** Create an infrastructure */
+        post: operations["createInfrastructure"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/infrastructures/{infrastructureId}": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                producerId: components["parameters"]["ProducerId"];
+                infrastructureId: components["parameters"]["InfrastructureId"];
             };
             cookie?: never;
         };
-        /** Get infrastructure for a producer */
+        /** Get an infrastructure */
         get: operations["getInfrastructure"];
-        /** Create or update infrastructure (upsert) */
-        put: operations["upsertInfrastructure"];
+        /** Update an infrastructure */
+        put: operations["updateInfrastructure"];
         post?: never;
-        delete?: never;
+        /** Delete an infrastructure */
+        delete: operations["deleteInfrastructure"];
         options?: never;
         head?: never;
         patch?: never;
@@ -518,6 +537,10 @@ export interface components {
             province?: string | null;
             /** @default false */
             isBio: boolean;
+            /** Format: double */
+            latitude?: number | null;
+            /** Format: double */
+            longitude?: number | null;
         };
         ProducerPage: components["schemas"]["Page"] & {
             items?: components["schemas"]["Producer"][];
@@ -557,9 +580,7 @@ export interface components {
         ProductCategory: "dry" | "fresh" | "frozen";
         Infrastructure: {
             /** Format: uuid */
-            readonly id?: string;
-            /** Format: uuid */
-            readonly producerId?: string;
+            readonly id: string;
             drySurfaceM2: number;
             freshSurfaceM2: number;
             frozenSurfaceM2: number;
@@ -571,6 +592,20 @@ export interface components {
             /** Format: date-time */
             readonly updatedAt?: string;
         };
+        InfrastructureCreate: {
+            /** @default 0 */
+            drySurfaceM2: number;
+            /** @default 0 */
+            freshSurfaceM2: number;
+            /** @default 0 */
+            frozenSurfaceM2: number;
+            /** @default 0 */
+            prepSurfaceM2: number;
+            /** Format: double */
+            depotLatitude?: number | null;
+            /** Format: double */
+            depotLongitude?: number | null;
+        };
         InfrastructureUpdate: {
             drySurfaceM2?: number;
             freshSurfaceM2?: number;
@@ -580,6 +615,9 @@ export interface components {
             depotLatitude?: number | null;
             /** Format: double */
             depotLongitude?: number | null;
+        };
+        InfrastructurePage: components["schemas"]["Page"] & {
+            items?: components["schemas"]["Infrastructure"][];
         };
         Vehicle: {
             /** Format: uuid */
@@ -938,6 +976,12 @@ export interface components {
              * @default 10000
              */
             maxSolveTimeMs: number;
+            /**
+             * Format: double
+             * @description Vitesse moyenne (km/h) utilisée pour estimer le temps de trajet (coût chauffeur)
+             * @default 50
+             */
+            avgSpeedKmPerHour: number;
         };
         OptimizationResult: {
             /** Format: date */
@@ -967,6 +1011,38 @@ export interface components {
             transfers: components["schemas"]["OptimizationProducerHubTransfer"][];
             /** @description Per-hub last-mile manifest (all producers combined) */
             pickingLists: components["schemas"]["OptimizationHubPickingList"][];
+            /** @description Reconstructed tours (loops) for mapping/visualization */
+            tours?: components["schemas"]["OptimizationTour"][];
+        };
+        /** @enum {string} */
+        OptimizationTourType: "DIRECT" | "BULK_TRANSFER" | "LAST_MILE";
+        OptimizationTour: {
+            tourId: string;
+            type: components["schemas"]["OptimizationTourType"];
+            /** Format: uuid */
+            producerId?: string | null;
+            /** Format: uuid */
+            hubId?: string | null;
+            start: components["schemas"]["Waypoint"];
+            end: components["schemas"]["Waypoint"];
+            orderedStopIds: string[];
+            legs: components["schemas"]["OptimizationTourLeg"][];
+            /** Format: double */
+            totalKm: number;
+            /** Format: double */
+            totalTravelCostEur: number;
+        };
+        OptimizationTourLeg: {
+            /** Format: uuid */
+            fromStopId?: string | null;
+            /** Format: uuid */
+            toStopId?: string | null;
+            from: components["schemas"]["Waypoint"];
+            to: components["schemas"]["Waypoint"];
+            /** Format: double */
+            km: number;
+            /** Format: double */
+            travelCostEur: number;
         };
         OptimizationStopAssignment: {
             /** Format: uuid */
@@ -992,6 +1068,16 @@ export interface components {
              * @description Cost of the chosen hub last-mile; null if mode=DIRECT
              */
             viaHubCostEur?: number | null;
+            /**
+             * Format: double
+             * @description Geocoded stop location (for mapping purposes); null if not geocoded
+             */
+            latitude?: number | null;
+            /**
+             * Format: double
+             * @description Geocoded stop location (for mapping purposes); null if not geocoded
+             */
+            longitude?: number | null;
         };
         OptimizationProducerHubTransfer: {
             /** Format: uuid */
@@ -1012,8 +1098,6 @@ export interface components {
         OptimizationHubPickingList: {
             /** Format: uuid */
             hubId: string;
-            /** Format: uuid */
-            hubProducerId: string;
             /** Format: double */
             latitude: number;
             /** Format: double */
@@ -1075,6 +1159,7 @@ export interface components {
         RouteId: string;
         StopId: string;
         ProductId: string;
+        InfrastructureId: string;
     };
     requestBodies: never;
     headers: never;
@@ -1105,18 +1190,65 @@ export interface operations {
             };
         };
     };
+    listInfrastructures: {
+        parameters: {
+            query?: {
+                limit?: components["parameters"]["Limit"];
+                offset?: components["parameters"]["Offset"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Page of infrastructures */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InfrastructurePage"];
+                };
+            };
+        };
+    };
+    createInfrastructure: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InfrastructureCreate"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Infrastructure"];
+                };
+            };
+        };
+    };
     getInfrastructure: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                producerId: components["parameters"]["ProducerId"];
+                infrastructureId: components["parameters"]["InfrastructureId"];
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Infrastructure record */
+            /** @description Infrastructure */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1128,12 +1260,12 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
-    upsertInfrastructure: {
+    updateInfrastructure: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                producerId: components["parameters"]["ProducerId"];
+                infrastructureId: components["parameters"]["InfrastructureId"];
             };
             cookie?: never;
         };
@@ -1143,7 +1275,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Saved infrastructure */
+            /** @description Updated */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1151,6 +1283,26 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Infrastructure"];
                 };
+            };
+        };
+    };
+    deleteInfrastructure: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                infrastructureId: components["parameters"]["InfrastructureId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

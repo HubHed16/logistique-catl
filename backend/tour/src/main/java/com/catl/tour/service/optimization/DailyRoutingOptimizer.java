@@ -5,6 +5,8 @@ import com.google.ortools.linearsolver.MPConstraint;
 import com.google.ortools.linearsolver.MPObjective;
 import com.google.ortools.linearsolver.MPSolver;
 import com.google.ortools.linearsolver.MPVariable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -21,23 +23,30 @@ import java.util.UUID;
 @Service
 public class DailyRoutingOptimizer {
 
+    private static final Logger log = LoggerFactory.getLogger(DailyRoutingOptimizer.class);
     private static final String SOLVER_NAME = "CBC";
 
     private final HubRepository hubRepository;
     private final DailyDemandLoader demandLoader;
     private final CostModel costModel;
     private final DistanceProvider distance;
+    private final VehicleCostProvider vehicleCostProvider;
+    private final NearestNeighborTourPlanner tourPlanner;
 
     DailyRoutingOptimizer(
             HubRepository hubRepository,
             DailyDemandLoader demandLoader,
             CostModel costModel,
-            DistanceProvider distance
+            DistanceProvider distance,
+            VehicleCostProvider vehicleCostProvider,
+            NearestNeighborTourPlanner tourPlanner
     ) {
         this.hubRepository = hubRepository;
         this.demandLoader = demandLoader;
         this.costModel = costModel;
         this.distance = distance;
+        this.vehicleCostProvider = vehicleCostProvider;
+        this.tourPlanner = tourPlanner;
     }
 
     public OptimizationResult optimize(OptimizationRequest request) {
@@ -52,6 +61,13 @@ public class DailyRoutingOptimizer {
         for (StopDemand s : allStops) producerIds.add(s.producerId());
 
         Map<UUID, GeoPoint> depots = hubRepository.findDepots(producerIds);
+
+        Set<UUID> missingDepot = new LinkedHashSet<>(producerIds);
+        missingDepot.removeAll(depots.keySet());
+        if (!missingDepot.isEmpty()) {
+            log.warn("Producers excluded from optimization (no depot coords in WMS): {}", missingDepot);
+        }
+
         List<StopDemand> stops = new ArrayList<>(allStops.size());
         for (StopDemand s : allStops) {
             if (depots.containsKey(s.producerId())) stops.add(s);
@@ -63,11 +79,11 @@ public class DailyRoutingOptimizer {
         Set<UUID> activeProducers = new LinkedHashSet<>();
         for (StopDemand s : stops) activeProducers.add(s.producerId());
 
+        // Conservé (peut servir à debug/comparaison)
         Map<UUID, Double> costPerKm = new HashMap<>();
         for (UUID pid : activeProducers) {
             costPerKm.put(pid, costModel.producerCostPerKm(pid));
         }
-        double hubCostPerKm = costModel.hubCostPerKm();
 
         List<HubCandidate> hubs = hubRepository.findAll(
                 request.handlingFeePerUnit(),
@@ -75,10 +91,11 @@ public class DailyRoutingOptimizer {
         );
 
         if (hubs.isEmpty()) {
+            log.warn("No hub candidates found (infrastructure table has no records with non-null depot_latitude/depot_longitude) — falling back to all-direct routing");
             return allDirectResult(request, stops, depots, costPerKm, 0, startNanos);
         }
 
-        return solveMilp(request, stops, activeProducers, depots, costPerKm, hubs, hubCostPerKm, startNanos);
+        return solveMilp(request, stops, activeProducers, depots, costPerKm, hubs, startNanos);
     }
 
     private OptimizationResult solveMilp(
@@ -88,42 +105,80 @@ public class DailyRoutingOptimizer {
             Map<UUID, GeoPoint> depots,
             Map<UUID, Double> costPerKm,
             List<HubCandidate> hubs,
-            double hubCostPerKm,
             long startNanos
     ) {
         int n = stops.size();
         int m = hubs.size();
+
+        double avgSpeedKmPerHour = request.avgSpeedKmPerHour();
 
         List<UUID> producerList = new ArrayList<>(activeProducers);
         Map<UUID, Integer> producerIdx = new HashMap<>();
         for (int p = 0; p < producerList.size(); p++) producerIdx.put(producerList.get(p), p);
         int pCount = producerList.size();
 
+        // Coûts utilisés par le MILP.
+        // IMPORTANT: on ne veut plus un AR par stop, mais une approximation "tournée".
         double[] directCost = new double[n];
         double[][] lastMileCost = new double[n][m];
         double[][] detourKm = new double[pCount][m];
         double[][] detourCost = new double[pCount][m];
 
+        // 1) Pré-calcul: facteur de mutualisation par route (direct) basé sur un chaînage nearest-neighbor.
+        //    On calcule la distance totale de la route (dépot -> stops -> dépot) / somme des AR individuels.
+        //    Puis on applique ce facteur aux coûts "par stop" pour approximer un coût tourné.
+        Map<UUID, Double> routeDirectScale = computeRouteDirectScale(stops, depots, avgSpeedKmPerHour);
+
         for (int i = 0; i < n; i++) {
             StopDemand s = stops.get(i);
             GeoPoint depot = depots.get(s.producerId());
-            directCost[i] = costModel.directCost(depot, s, costPerKm.get(s.producerId()));
+            TravelCostParams stopParams = vehicleCostProvider.paramsForVehicle(s.vehicleId(), avgSpeedKmPerHour);
+
+            double baseDirect = costModel.directCost(depot, s, stopParams);
+            double scale = routeDirectScale.getOrDefault(s.routeId(), 1.0);
+            directCost[i] = baseDirect * scale;
+            // lastMileCost[i][j] est calculé après (avec mutualisation hub-route), pas ici.
+        }
+
+        // 2) Mutualisation last-mile: scale GLOBALE par hub (tous producteurs confondus).
+        //    Seuls les stops géographiquement plus proches du hub que de leur dépôt entrent
+        //    dans la simulation — les stops "loin du hub" gonfleraient la scale et masqueraient
+        //    le vrai gain de mutualisation pour les stops proches.
+        Map<UUID, Double> globalHubScale = computeGlobalHubScale(stops, hubs, depots);
+        for (int i = 0; i < n; i++) {
+            StopDemand s = stops.get(i);
+            TravelCostParams stopParams = vehicleCostProvider.paramsForVehicle(s.vehicleId(), avgSpeedKmPerHour);
             for (int j = 0; j < m; j++) {
-                lastMileCost[i][j] = costModel.hubAssignCost(
-                        hubs.get(j).location(), s,
-                        hubCostPerKm, hubs.get(j).handlingFeePerUnit()
-                );
+                double base = costModel.hubAssignCost(hubs.get(j).location(), s, stopParams, hubs.get(j).handlingFeePerUnit());
+                double scale = globalHubScale.getOrDefault(hubs.get(j).infrastructureId(), 1.0);
+                lastMileCost[i][j] = base * scale;
             }
         }
+
         for (int p = 0; p < pCount; p++) {
             UUID pid = producerList.get(p);
             GeoPoint depot = depots.get(pid);
-            double pKm = costPerKm.get(pid);
+
+            UUID producerVehicleId = null;
+            for (StopDemand s : stops) {
+                if (s.producerId().equals(pid) && s.vehicleId() != null) {
+                    producerVehicleId = s.vehicleId();
+                    break;
+                }
+            }
+            TravelCostParams producerParams;
+            if (producerVehicleId == null) {
+                log.warn("No vehicle found for producer {} — using default cost parameters (8 L/100km, 1.80 €/L, 25 €/h)", pid);
+                producerParams = new TravelCostParams(1.80, 8.0, 8.0, 25.0, avgSpeedKmPerHour, 1.0);
+            } else {
+                producerParams = vehicleCostProvider.paramsForVehicle(producerVehicleId, avgSpeedKmPerHour);
+            }
+
             for (int j = 0; j < m; j++) {
                 GeoPoint hub = hubs.get(j).location();
                 double km = distance.km(depot, hub);
                 detourKm[p][j] = 2.0 * km;
-                detourCost[p][j] = 2.0 * km * pKm;
+                detourCost[p][j] = costModel.hubTransferCost(depot, hub, producerParams);
             }
         }
 
@@ -259,6 +314,7 @@ public class DailyRoutingOptimizer {
             hubsUsed++;
             HubCandidate h = hubs.get(j);
             Map<UUID, Double> perProducer = new LinkedHashMap<>();
+
             List<UUID> stopIds = new ArrayList<>();
             double totalVolume = 0.0;
             for (int i = 0; i < n; i++) {
@@ -269,21 +325,239 @@ public class DailyRoutingOptimizer {
                 perProducer.merge(s.producerId(), s.volume(), Double::sum);
             }
             pickingLists.add(new HubPickingList(
-                    h.infrastructureId(), h.producerId(), h.location(),
+                    h.infrastructureId(), h.location(),
                     stopIds, new ArrayList<>(perProducer.keySet()),
                     totalVolume, request.openingFee()
+            ));
+        }
+
+        // Inclure les hubs candidats non retenus (stopIds vides) pour que le front puisse les afficher.
+        for (int j = 0; j < m; j++) {
+            if (y[j].solutionValue() >= 0.5) continue;
+            HubCandidate h = hubs.get(j);
+            pickingLists.add(new HubPickingList(
+                    h.infrastructureId(), h.location(),
+                    Collections.emptyList(), Collections.emptyList(),
+                    0.0, request.openingFee()
             ));
         }
 
         double optimized = obj.value();
         long elapsedMs = (System.nanoTime() - startNanos) / 1_000_000L;
 
+        // Étape A: reconstruction de tournées (boucles) pour traçage front.
+        List<OptimizationTour> tours = buildTours(request, stops, depots, assignments, transfers, pickingLists, hubs);
+
         return new OptimizationResult(
                 request.date(), status.name(), elapsedMs,
                 n, pCount, m, hubsUsed,
                 baseline, optimized, baseline - optimized,
-                assignments, transfers, pickingLists
+                assignments, transfers, pickingLists,
+                tours
         );
+    }
+
+    private List<OptimizationTour> buildTours(
+            OptimizationRequest request,
+            List<StopDemand> allStops,
+            Map<UUID, GeoPoint> depots,
+            List<StopAssignment> assignments,
+            List<ProducerHubTransfer> transfers,
+            List<HubPickingList> pickingLists,
+            List<HubCandidate> hubs
+    ) {
+        // Indexer demandes par stopId pour récupérer vehicleId, coords, volume.
+        Map<UUID, StopDemand> demandByStop = new HashMap<>();
+        for (StopDemand d : allStops) demandByStop.put(d.stopId(), d);
+
+        // Indexer hubs par id pour récupérer coords.
+        Map<UUID, GeoPoint> hubLoc = new HashMap<>();
+        for (HubCandidate h : hubs) hubLoc.put(h.infrastructureId(), h.location());
+
+        List<OptimizationTour> out = new ArrayList<>();
+
+        // (1) Tournées DIRECT: groupées par routeId.
+        Map<UUID, List<StopDemand>> directByRoute = new LinkedHashMap<>();
+        for (StopAssignment a : assignments) {
+            if (a.mode() != StopAssignment.Mode.DIRECT) continue;
+            StopDemand d = demandByStop.get(a.stopId());
+            if (d == null) continue;
+            directByRoute.computeIfAbsent(a.routeId(), _k -> new ArrayList<>()).add(d);
+        }
+
+        for (var e : directByRoute.entrySet()) {
+            UUID routeId = e.getKey();
+            List<StopDemand> routeStops = e.getValue();
+            if (routeStops.isEmpty()) continue;
+
+            UUID producerId = routeStops.get(0).producerId();
+            GeoPoint depot = depots.get(producerId);
+            if (depot == null) continue;
+
+            UUID vehicleId = routeStops.get(0).vehicleId();
+            if (vehicleId == null) continue;
+            TravelCostParams params = vehicleCostProvider.paramsForVehicle(vehicleId, request.avgSpeedKmPerHour());
+
+            TourBuildResult tr = buildLoop(depot, depot, routeStops, params);
+            out.add(new OptimizationTour(
+                    "direct-" + routeId,
+                    OptimizationTourType.DIRECT,
+                    producerId,
+                    null,
+                    depot,
+                    depot,
+                    tr.orderedStopIds,
+                    tr.legs,
+                    tr.totalKm,
+                    tr.totalCost
+            ));
+        }
+
+        // (2) Tournées BULK_TRANSFER: une boucle dépôt producteur -> hub -> dépôt pour chaque transfert non nul.
+        for (ProducerHubTransfer t : transfers) {
+            if (t.totalVolume() <= 0) continue;
+            GeoPoint depot = depots.get(t.producerId());
+            GeoPoint hub = hubLoc.get(t.hubId());
+            if (depot == null || hub == null) continue;
+
+            // vehicle: prendre le premier stop de ce producteur (on a besoin des params coût)
+            UUID vehicleId = null;
+            for (StopDemand d : allStops) {
+                if (t.producerId().equals(d.producerId()) && d.vehicleId() != null) {
+                    vehicleId = d.vehicleId();
+                    break;
+                }
+            }
+            if (vehicleId == null) continue;
+            TravelCostParams params = vehicleCostProvider.paramsForVehicle(vehicleId, request.avgSpeedKmPerHour());
+
+            // Legs: depot -> hub, hub -> depot
+            double km1 = distance.km(depot, hub);
+            double c1 = costModel.roundTripTravelCost(km1, 0.0, params) / 2.0;
+            double km2 = distance.km(hub, depot);
+            double c2 = costModel.roundTripTravelCost(km2, 0.0, params) / 2.0;
+
+            List<TourLeg> legs = List.of(
+                    new TourLeg(null, null, depot, hub, km1, c1),
+                    new TourLeg(null, null, hub, depot, km2, c2)
+            );
+
+            out.add(new OptimizationTour(
+                    "bulk-" + t.producerId() + "-" + t.hubId(),
+                    OptimizationTourType.BULK_TRANSFER,
+                    t.producerId(),
+                    t.hubId(),
+                    depot,
+                    depot,
+                    List.of(),
+                    legs,
+                    km1 + km2,
+                    c1 + c2
+            ));
+        }
+
+        // (3) Tournées LAST_MILE: une boucle par pickingList actif (hub -> stops -> hub).
+        for (HubPickingList p : pickingLists) {
+            if (p.stopIds().isEmpty()) continue;
+            GeoPoint hub = hubLoc.get(p.hubId());
+            if (hub == null) continue;
+
+            List<StopDemand> hubStops = new ArrayList<>();
+            for (UUID stopId : p.stopIds()) {
+                StopDemand d = demandByStop.get(stopId);
+                if (d == null) continue;
+                hubStops.add(d);
+            }
+            if (hubStops.isEmpty()) continue;
+
+            // vehicle: heuristique simple -> prendre le véhicule du premier stop.
+            UUID vehicleId = hubStops.get(0).vehicleId();
+            if (vehicleId == null) continue;
+            TravelCostParams params = vehicleCostProvider.paramsForVehicle(vehicleId, request.avgSpeedKmPerHour());
+
+            TourBuildResult tr = buildLoop(hub, hub, hubStops, params);
+            out.add(new OptimizationTour(
+                    "lm-" + p.hubId(),
+                    OptimizationTourType.LAST_MILE,
+                    null,
+                    p.hubId(),
+                    hub,
+                    hub,
+                    tr.orderedStopIds,
+                    tr.legs,
+                    tr.totalKm,
+                    tr.totalCost
+            ));
+        }
+
+        return out;
+    }
+
+    private record TourBuildResult(
+            List<UUID> orderedStopIds,
+            List<TourLeg> legs,
+            double totalKm,
+            double totalCost
+    ) {}
+
+    private TourBuildResult buildLoop(
+            GeoPoint start,
+            GeoPoint end,
+            List<StopDemand> stops,
+            TravelCostParams params
+    ) {
+        if (stops == null || stops.isEmpty()) {
+            return new TourBuildResult(List.of(), List.of(), 0.0, 0.0);
+        }
+
+        // Construire points des stops
+        List<GeoPoint> pts = new ArrayList<>(stops.size());
+        for (StopDemand s : stops) pts.add(new GeoPoint(s.latitude(), s.longitude()));
+        DistanceMatrix dm = DistanceMatrix.compute(distance, pts, pts);
+
+        // Choisir point de départ = stop le plus proche du start
+        int startIndex = 0;
+        double bestKm = Double.POSITIVE_INFINITY;
+        for (int i = 0; i < pts.size(); i++) {
+            double km = distance.km(start, pts.get(i));
+            if (km < bestKm) {
+                bestKm = km;
+                startIndex = i;
+            }
+        }
+
+        List<Integer> orderIdx = tourPlanner.planOrder(dm, startIndex);
+
+        List<StopDemand> orderedStops = new ArrayList<>(stops.size());
+        for (int idx : orderIdx) orderedStops.add(stops.get(idx));
+
+        List<UUID> orderedStopIds = orderedStops.stream().map(StopDemand::stopId).toList();
+
+        List<TourLeg> legs = new ArrayList<>();
+        double totalKm = 0.0;
+        double totalCost = 0.0;
+
+        GeoPoint prev = start;
+        UUID prevStopId = null;
+        for (StopDemand s : orderedStops) {
+            GeoPoint next = new GeoPoint(s.latitude(), s.longitude());
+            double km = distance.km(prev, next);
+            double cost = costModel.roundTripTravelCost(km, s.volume(), params) / 2.0;
+            legs.add(new TourLeg(prevStopId, s.stopId(), prev, next, km, cost));
+            totalKm += km;
+            totalCost += cost;
+            prev = next;
+            prevStopId = s.stopId();
+        }
+
+        // Retour/end
+        double km = distance.km(prev, end);
+        double cost = costModel.roundTripTravelCost(km, 0.0, params) / 2.0;
+        legs.add(new TourLeg(prevStopId, null, prev, end, km, cost));
+        totalKm += km;
+        totalCost += cost;
+
+        return new TourBuildResult(orderedStopIds, legs, totalKm, totalCost);
     }
 
     private OptimizationResult emptyResult(
@@ -294,7 +568,8 @@ public class DailyRoutingOptimizer {
                 request.date(), reason, elapsedMs,
                 0, producers, hubs, 0,
                 0.0, 0.0, 0.0,
-                Collections.emptyList(), Collections.emptyList(), Collections.emptyList()
+                Collections.emptyList(), Collections.emptyList(), Collections.emptyList(),
+                List.of()
         );
     }
 
@@ -306,10 +581,13 @@ public class DailyRoutingOptimizer {
             int hubsAvailable,
             long startNanos
     ) {
+        double avgSpeedKmPerHour = request.avgSpeedKmPerHour();
+
         List<StopAssignment> assignments = new ArrayList<>(stops.size());
         double total = 0.0;
         for (StopDemand s : stops) {
-            double c = costModel.directCost(depots.get(s.producerId()), s, costPerKm.get(s.producerId()));
+            TravelCostParams stopParams = vehicleCostProvider.paramsForVehicle(s.vehicleId(), avgSpeedKmPerHour);
+            double c = costModel.directCost(depots.get(s.producerId()), s, stopParams);
             total += c;
             assignments.add(new StopAssignment(
                     s.stopId(), s.routeId(), s.producerId(), s.sequence(),
@@ -317,6 +595,12 @@ public class DailyRoutingOptimizer {
                     c, Double.NaN, s.latitude(), s.longitude()
             ));
         }
+
+        List<OptimizationTour> tours = buildTours(
+                request, stops, depots, assignments,
+                Collections.emptyList(), Collections.emptyList(), Collections.emptyList()
+        );
+
         long elapsedMs = (System.nanoTime() - startNanos) / 1_000_000L;
         Set<UUID> producers = new LinkedHashSet<>();
         for (StopDemand s : stops) producers.add(s.producerId());
@@ -324,7 +608,141 @@ public class DailyRoutingOptimizer {
                 request.date(), "NO_HUBS_AVAILABLE", elapsedMs,
                 stops.size(), producers.size(), hubsAvailable, 0,
                 total, total, 0.0,
-                assignments, Collections.emptyList(), Collections.emptyList()
+                assignments, Collections.emptyList(), Collections.emptyList(),
+                tours
         );
+    }
+
+    private Map<UUID, Double> computeRouteDirectScale(
+            List<StopDemand> stops,
+            Map<UUID, GeoPoint> depots,
+            double avgSpeedKmPerHour
+    ) {
+        // Grouper stops par route.
+        Map<UUID, List<StopDemand>> byRoute = new LinkedHashMap<>();
+        for (StopDemand s : stops) {
+            byRoute.computeIfAbsent(s.routeId(), _k -> new ArrayList<>()).add(s);
+        }
+
+        Map<UUID, Double> out = new HashMap<>();
+        for (var e : byRoute.entrySet()) {
+            UUID routeId = e.getKey();
+            List<StopDemand> routeStops = e.getValue();
+            if (routeStops.size() < 2) {
+                out.put(routeId, 1.0);
+                continue;
+            }
+
+            UUID producerId = routeStops.get(0).producerId();
+            GeoPoint depot = depots.get(producerId);
+            if (depot == null) {
+                out.put(routeId, 1.0);
+                continue;
+            }
+
+            // ordre NN sur les stops de la route
+            List<GeoPoint> pts = new ArrayList<>(routeStops.size());
+            for (StopDemand s : routeStops) pts.add(new GeoPoint(s.latitude(), s.longitude()));
+            DistanceMatrix dm = DistanceMatrix.compute(distance, pts, pts);
+
+            int startIndex = 0;
+            double bestDepotKm = Double.POSITIVE_INFINITY;
+            for (int i = 0; i < pts.size(); i++) {
+                double km = distance.km(depot, pts.get(i));
+                if (km < bestDepotKm) {
+                    bestDepotKm = km;
+                    startIndex = i;
+                }
+            }
+
+            List<Integer> orderIdx = tourPlanner.planOrder(dm, startIndex);
+
+            // km tournée = depot->first + chain + last->depot
+            GeoPoint prev = depot;
+            double tourKm = 0.0;
+            for (int idx : orderIdx) {
+                GeoPoint next = pts.get(idx);
+                tourKm += distance.km(prev, next);
+                prev = next;
+            }
+            tourKm += distance.km(prev, depot);
+
+            // km baseline = somme des AR depot<->stop
+            double baselineKm = 0.0;
+            for (GeoPoint p : pts) baselineKm += 2.0 * distance.km(depot, p);
+
+            double scale = (baselineKm > 0) ? (tourKm / baselineKm) : 1.0;
+            // Pas de clamp bas agressif: le clamp 0.35 rendait le direct artificiellement
+            // bon marché pour les stops isolés géographiquement, empêchant le hub de gagner.
+            // On garde seulement un plancher de sécurité numérique.
+            scale = Math.max(0.10, Math.min(1.0, scale));
+            out.put(routeId, scale);
+        }
+        return out;
+    }
+
+    /**
+     * Facteur de mutualisation last-mile par hub, calculé uniquement sur les stops
+     * géographiquement plus proches du hub que de leur propre dépôt.
+     *
+     * Filtrer ainsi évite qu'un stop "loin du hub" (et donc peu susceptible de l'utiliser)
+     * gonfle la tournée simulée et masque le gain de consolidation pour les stops proches.
+     * Si aucun stop n'est plus proche du hub que de son dépôt, on retourne scale = 1.0
+     * (hub peu attractif pour ce secteur).
+     */
+    private Map<UUID, Double> computeGlobalHubScale(
+            List<StopDemand> stops,
+            List<HubCandidate> hubs,
+            Map<UUID, GeoPoint> depots
+    ) {
+        Map<UUID, Double> out = new HashMap<>();
+        for (HubCandidate h : hubs) {
+            GeoPoint hub = h.location();
+
+            // Stops pour lesquels le hub est plus proche que leur dépôt
+            List<GeoPoint> hubStops = new ArrayList<>();
+            for (StopDemand s : stops) {
+                GeoPoint depot = depots.get(s.producerId());
+                if (depot == null) continue;
+                GeoPoint pt = new GeoPoint(s.latitude(), s.longitude());
+                if (distance.km(hub, pt) < distance.km(depot, pt)) {
+                    hubStops.add(pt);
+                }
+            }
+
+            if (hubStops.size() < 2) {
+                // Pas assez de stops proches du hub: scale = 1.0 (pas de mutualisation)
+                out.put(h.infrastructureId(), 1.0);
+                continue;
+            }
+
+            DistanceMatrix dm = DistanceMatrix.compute(distance, hubStops, hubStops);
+
+            int startIndex = 0;
+            double bestKm = Double.POSITIVE_INFINITY;
+            for (int i = 0; i < hubStops.size(); i++) {
+                double km = distance.km(hub, hubStops.get(i));
+                if (km < bestKm) { bestKm = km; startIndex = i; }
+            }
+
+            List<Integer> orderIdx = tourPlanner.planOrder(dm, startIndex);
+
+            GeoPoint prev = hub;
+            double tourKm = 0.0;
+            for (int idx : orderIdx) {
+                GeoPoint next = hubStops.get(idx);
+                tourKm += distance.km(prev, next);
+                prev = next;
+            }
+            tourKm += distance.km(prev, hub);
+
+            double baselineKm = 0.0;
+            for (GeoPoint p : hubStops) baselineKm += 2.0 * distance.km(hub, p);
+
+            double scale = (baselineKm > 0) ? (tourKm / baselineKm) : 1.0;
+            scale = Math.max(0.15, Math.min(1.0, scale));
+            out.put(h.infrastructureId(), scale);
+        }
+        return out;
     }
 }

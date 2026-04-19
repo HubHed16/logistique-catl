@@ -12,5 +12,7 @@ public record ProducerDto(
         @JsonProperty("contact") String contact,
         @JsonProperty("address") String address,
         @JsonProperty("province") String province,
-        @JsonProperty("is_bio") boolean bio
+        @JsonProperty("is_bio") boolean bio,
+        Double latitude,
+        Double longitude
 ) {}

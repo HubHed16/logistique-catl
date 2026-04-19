@@ -1,0 +1,9 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: 021-update-infrastructure-schema
+      author: hmalaquin
+      changes:
+        - dropColumn:
+            tableName: infrastructure
+            columnName: producer_id

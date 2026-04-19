@@ -27,4 +27,8 @@ public class Producer {
 
     @Column(name = "is_bio", nullable = false)
     private boolean isBio;
+
+    private Double latitude;
+
+    private Double longitude;
 }

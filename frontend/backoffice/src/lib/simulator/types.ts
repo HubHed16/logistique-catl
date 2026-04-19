@@ -44,6 +44,9 @@ export type OptimizationProducerHubTransfer =
   components["schemas"]["OptimizationProducerHubTransfer"];
 export type OptimizationHubPickingList =
   components["schemas"]["OptimizationHubPickingList"];
+export type OptimizationTour = components["schemas"]["OptimizationTour"];
+export type OptimizationTourLeg = components["schemas"]["OptimizationTourLeg"];
+export type OptimizationTourType = components["schemas"]["OptimizationTourType"];
 
 export type Customer = components["schemas"]["Customer"];
 export type CustomerCreate = components["schemas"]["CustomerCreate"];

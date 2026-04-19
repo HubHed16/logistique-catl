@@ -15,7 +15,15 @@ spring:
     default-schema: public
 
 wms.api:
-  base-url: http://localhost:8088/api
+  base-url: http://localhost:8081/api
+
+# OSRM (routing distances)
+# base-url peut être remplacé par votre instance locale (ex: http://localhost:5000)
+# profile dépend de l’instance (ex: 'routed-car' sur routing.openstreetmap.de, ou 'car' sur OSRM vanilla)
+osrm:
+  enabled: true
+  base-url: https://routing.openstreetmap.de
+  profile: routed-car
 
 ---
 spring:

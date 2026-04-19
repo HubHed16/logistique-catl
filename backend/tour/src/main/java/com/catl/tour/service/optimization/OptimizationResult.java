@@ -16,6 +16,7 @@ public record OptimizationResult(
         double savingsEur,
         List<StopAssignment> assignments,
         List<ProducerHubTransfer> transfers,
-        List<HubPickingList> pickingLists
+        List<HubPickingList> pickingLists,
+        List<OptimizationTour> tours
 ) {
 }

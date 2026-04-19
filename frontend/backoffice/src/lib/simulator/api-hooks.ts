@@ -2,9 +2,11 @@
 
 import {
   useMutation,
+  useQueries,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { apiClient } from "@/lib/apigen/client";
 import type { components } from "@/lib/apigen/types";
 import type {
@@ -88,6 +90,7 @@ const producerKey = (id: string | undefined) =>
   ["producers", id ?? "-"] as const;
 const infrastructureKey = (producerId: string | undefined) =>
   ["infrastructure", producerId ?? "-"] as const;
+const infrastructuresKey = () => ["infrastructures"] as const;
 const vehiclesKey = (producerId: string | undefined) =>
   ["vehicles", producerId ?? "-"] as const;
 const routesKey = (producerId: string | undefined) =>
@@ -161,21 +164,50 @@ export { WmsApiError };
 
 // ─── Infrastructure ────────────────────────────────────────────────────────
 
+async function fetchAllInfrastructures(): Promise<components["schemas"]["Infrastructure"][]> {
+  const limit = 200;
+  let offset = 0;
+  const items: components["schemas"]["Infrastructure"][] = [];
+
+  // On boucle tant que la page est pleine.
+  // (L'OpenAPI renvoie { total, limit, offset, items? }).
+  for (;;) {
+    const page = unwrap(
+      await apiClient.GET("/infrastructures", {
+        params: { query: { limit, offset } },
+      }),
+    );
+
+    const batch = page.items ?? [];
+    items.push(...batch);
+
+    if (batch.length < limit) break;
+    offset += limit;
+
+    // garde-fou (évite boucle infinie si backend bug)
+    if (offset > 20_000) break;
+  }
+
+  return items;
+}
+
 export function useInfrastructure(producerId: string | null | undefined) {
   return useQuery({
     queryKey: infrastructureKey(producerId ?? undefined),
     queryFn: async () => {
-      const res = await apiClient.GET(
-        "/producers/{producerId}/infrastructure",
-        {
-          params: { path: { producerId: producerId! } },
-        },
-      );
-      // 404 avant premier PUT → on renvoie null plutôt que de throw
-      if (res.response.status === 404) return null;
-      return unwrap(res);
+      if (!producerId) return null;
+      const all = await fetchAllInfrastructures();
+      return all.find((i) => i.id === producerId) ?? null;
     },
     enabled: !!producerId,
+  });
+}
+
+export function useInfrastructures() {
+  return useQuery({
+    queryKey: infrastructuresKey(),
+    queryFn: fetchAllInfrastructures,
+    staleTime: 30_000,
   });
 }
 
@@ -184,13 +216,14 @@ export function useUpsertInfrastructure(producerId: string) {
   return useMutation({
     mutationFn: async (body: InfrastructureUpdate) =>
       unwrap(
-        await apiClient.PUT("/producers/{producerId}/infrastructure", {
-          params: { path: { producerId } },
+        await apiClient.PUT("/infrastructures/{infrastructureId}", {
+          params: { path: { infrastructureId: producerId } },
           body,
         }),
       ),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: infrastructureKey(producerId) });
+      qc.invalidateQueries({ queryKey: infrastructuresKey() });
     },
   });
 }
@@ -309,6 +342,143 @@ export function useComputeRoute(
     staleTime: 5 * 60 * 1000,
     retry: 1,
   });
+}
+
+// Variante batch de useProducerCoords/useProducer pour la carte d'optim :
+// fetch N producteurs + géocodage en parallèle via useQueries (une seule
+// re-render React pour tout le batch, cache partagé avec les appels unitaires).
+export function useProducerDepots(producerIds: readonly string[]) {
+  const uniqueIds = useMemo(
+    () => Array.from(new Set(producerIds)).sort(),
+    [producerIds],
+  );
+
+  const producerQueries = useQueries({
+    queries: uniqueIds.map((id) => ({
+      queryKey: producerKey(id),
+      queryFn: () => wmsGetProducer(id),
+      staleTime: 60_000,
+    })),
+  });
+
+  const coordQueries = useQueries({
+    queries: uniqueIds.map((_, i) => {
+      const producer = producerQueries[i]?.data;
+      const address = (producer?.address ?? "").trim();
+      const hasDirectCoords =
+        producer?.latitude != null && producer?.longitude != null;
+      return {
+        queryKey: ["geocode", "coords", address] as const,
+        queryFn: async () => {
+          const res = await apiClient.POST("/geo/geocode", {
+            body: { query: address },
+          });
+          const first = res.data?.[0];
+          return first
+            ? { lat: first.latitude, lon: first.longitude }
+            : null;
+        },
+        enabled: !hasDirectCoords && address.length >= 3,
+        staleTime: 60 * 60 * 1000,
+      };
+    }),
+  });
+
+  return useMemo(() => {
+    const out = new Map<
+      string,
+      { lat: number; lon: number; name: string; address: string }
+    >();
+    uniqueIds.forEach((id, i) => {
+      const producer = producerQueries[i]?.data;
+      if (!producer) return;
+
+      // 1) priorité: coords stockées en DB WMS
+      if (producer.latitude != null && producer.longitude != null) {
+        out.set(id, {
+          lat: producer.latitude,
+          lon: producer.longitude,
+          name: producer.name,
+          address: producer.address ?? "",
+        });
+        return;
+      }
+
+      // 2) fallback: géocodage adresse
+      const coords = coordQueries[i]?.data;
+      if (!coords) return;
+      out.set(id, {
+        lat: coords.lat,
+        lon: coords.lon,
+        name: producer.name,
+        address: producer.address ?? "",
+      });
+    });
+    return out;
+  }, [uniqueIds, producerQueries, coordQueries]);
+}
+
+// Batch /geo/route — fetch la géométrie routière réelle pour plusieurs
+// tournées en parallèle. Les waypoints sont stringifiés en cache key pour
+// partager le cache avec useComputeRoute.
+export function useRoadGeometries(
+  routes: ReadonlyArray<{
+    routeId: string;
+    waypoints: ReadonlyArray<{ latitude: number; longitude: number }>;
+  }>,
+) {
+  const queries = useQueries({
+    queries: routes.map((r) => {
+      // Nettoyage: supprimer NaN/undefined + doublons consécutifs.
+      const cleanedWaypoints = r.waypoints
+        .filter(
+          (w) =>
+            w != null &&
+            Number.isFinite(w.latitude) &&
+            Number.isFinite(w.longitude),
+        )
+        .filter((w, idx, arr) => {
+          if (idx === 0) return true;
+          const prev = arr[idx - 1];
+          return prev.latitude !== w.latitude || prev.longitude !== w.longitude;
+        });
+
+      const key = cleanedWaypoints
+        .map((w) => `${w.latitude.toFixed(5)},${w.longitude.toFixed(5)}`)
+        .join("|");
+
+      return {
+        queryKey: ["geo", "route", true, key] as const,
+        queryFn: async () =>
+          unwrap(
+            await apiClient.POST("/geo/route", {
+              body: {
+                waypoints: [...cleanedWaypoints],
+                returnGeometry: true,
+              },
+            }),
+          ),
+        enabled: cleanedWaypoints.length >= 2,
+        staleTime: 5 * 60 * 1000,
+        retry: 1,
+      };
+    }),
+  });
+
+  return useMemo(() => {
+    const out = new Map<
+      string,
+      { geometry: string | null | undefined; isLoading: boolean }
+    >();
+    routes.forEach((r, i) => {
+      const q = queries[i];
+      out.set(r.routeId, {
+        geometry: q?.data?.geometry,
+        isLoading: !!q?.isLoading,
+      });
+    });
+    return out;
+  }, [routes, queries]);
 }
 
 export function useDeleteVehicle(producerId: string) {
