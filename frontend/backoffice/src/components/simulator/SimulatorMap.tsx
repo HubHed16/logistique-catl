@@ -368,9 +368,11 @@ export function SimulatorMap() {
 
   // Sync marqueur avec producer — la DTO wms n'a plus lat/lon, on géocode
   // l'adresse à la volée (cache 1h via React Query).
-  const coords = useProducerCoords(producer?.address);
-  const lat = coords?.lat ?? null;
-  const lon = coords?.lon ?? null;
+  // const coords = useProducerCoords(producer?.address);
+  //const lat = coords?.lat ?? null;
+  const lat = producer?.latitude
+  //const lon = coords?.lon ?? null;
+  const lon = producer?.longitude
   const hasActiveRoute = !!state.activeRouteId;
   useEffect(() => {
     const map = mapRef.current;
