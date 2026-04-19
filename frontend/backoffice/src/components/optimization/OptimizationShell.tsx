@@ -2,10 +2,12 @@
 
 import {
   ArrowRight,
+  BarChart2,
   Boxes,
   Building2,
   Info,
   Package,
+  PieChart,
   Sparkles,
   TrendingDown,
   Truck,
@@ -13,6 +15,19 @@ import {
   Warehouse,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Pie,
+  PieChart as RechartsPieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
@@ -235,7 +250,9 @@ function ResultView({ result }: { result: OptimizationResult }) {
         </div>
       </section>
 
-      {result.assignments.length > 0}
+      {result.assignments.length > 0 && (
+        <OptimizationCharts result={result} />
+      )}
 
       {usedHubs.length > 0 && (
         <section className="catl-section catl-section--accent">
@@ -291,31 +308,206 @@ function ResultView({ result }: { result: OptimizationResult }) {
   );
 }
 
-function Kpi({
-  label,
-  value,
-  icon,
-  emphasis,
-}: {
-  label: string;
-  value: string;
-  icon?: React.ReactNode;
-  emphasis?: boolean;
-}) {
+// ─── Graphiques ──────────────────────────────────────────────────────────────
+
+const COLOR_DIRECT = "#7c3aed";
+const COLOR_HUB = "#ea580c";
+const COLOR_BASELINE = "#94a3b8";
+const COLOR_OPTIMIZED = "#16a34a";
+const COLOR_SAVINGS = "#0ea5e9";
+
+function OptimizationCharts({ result }: { result: OptimizationResult }) {
+  // Répartition arrêts direct vs hub
+  const modeSplit = useMemo(() => {
+    const direct = result.assignments.filter((a) => a.mode === "DIRECT").length;
+    const hub = result.assignments.filter((a) => a.mode === "VIA_HUB").length;
+    return [
+      { name: "Direct", value: direct, color: COLOR_DIRECT },
+      { name: "Via hub", value: hub, color: COLOR_HUB },
+    ].filter((d) => d.value > 0);
+  }, [result.assignments]);
+
+  // Volume par mode
+  const volumeSplit = useMemo(() => {
+    const direct = result.assignments
+      .filter((a) => a.mode === "DIRECT")
+      .reduce((s, a) => s + a.volume, 0);
+    const hub = result.assignments
+      .filter((a) => a.mode === "VIA_HUB")
+      .reduce((s, a) => s + a.volume, 0);
+    return [
+      { name: "Direct", value: Math.round(direct * 10) / 10, color: COLOR_DIRECT },
+      { name: "Via hub", value: Math.round(hub * 10) / 10, color: COLOR_HUB },
+    ].filter((d) => d.value > 0);
+  }, [result.assignments]);
+
+  // Coûts par producteur (direct cumulé + coût détour hub)
+  const costByProducer = useMemo(() => {
+    const map = new Map<string, { direct: number; detour: number }>();
+    for (const a of result.assignments) {
+      const id = a.producerId.slice(0, 8);
+      const existing = map.get(id) ?? { direct: 0, detour: 0 };
+      if (a.mode === "DIRECT") {
+        existing.direct += a.directCostEur;
+      } else {
+        existing.direct += a.viaHubCostEur ?? a.directCostEur;
+      }
+      map.set(id, existing);
+    }
+    for (const t of result.transfers) {
+      const id = t.producerId.slice(0, 8);
+      const existing = map.get(id) ?? { direct: 0, detour: 0 };
+      existing.detour += t.detourCostEur;
+      map.set(id, existing);
+    }
+    return Array.from(map.entries())
+      .map(([id, v]) => ({
+        id,
+        "Last-mile / Direct": Math.round(v.direct * 100) / 100,
+        "Détour hub": Math.round(v.detour * 100) / 100,
+      }))
+      .sort((a, b) => (b["Last-mile / Direct"] + b["Détour hub"]) - (a["Last-mile / Direct"] + a["Détour hub"]));
+  }, [result.assignments, result.transfers]);
+
+  // Comparaison baseline vs optimisé
+  const costComparison = [
+    { name: "Baseline\n(tout direct)", coût: Math.round(result.baselineAllDirectCostEur * 100) / 100 },
+    { name: "Optimisé", coût: Math.round(result.optimizedCostEur * 100) / 100 },
+    { name: "Économie", coût: Math.round(result.savingsEur * 100) / 100 },
+  ];
+
+  const hasTwoModes = modeSplit.length === 2;
+
   return (
-    <div className="bg-white rounded-md border border-gray-200 px-3 py-2">
-      <div className="text-[10px] uppercase tracking-wide text-catl-text/70 font-semibold flex items-center gap-1.5">
-        {icon}
-        {label}
+    <section className="catl-section catl-section--primary">
+      <span className="catl-section-pill">
+        <BarChart2 className="w-3 h-3" /> Analyse graphique
+      </span>
+      <div className={`mt-3 grid gap-5 ${hasTwoModes ? "grid-cols-1 md:grid-cols-3" : "grid-cols-1 md:grid-cols-2"}`}>
+
+        {/* Donut arrêts par mode */}
+        <div className="bg-white rounded-md border border-gray-200 p-4">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-catl-text/70 uppercase tracking-wide mb-3">
+            <PieChart className="w-3.5 h-3.5" />
+            Arrêts par mode
+          </div>
+          <ResponsiveContainer width="100%" height={180}>
+            <RechartsPieChart>
+              <Pie
+                data={modeSplit}
+                cx="50%"
+                cy="50%"
+                innerRadius={48}
+                outerRadius={72}
+                paddingAngle={3}
+                dataKey="value"
+                label={({ name, percent }) =>
+                  `${name} ${Math.round(percent * 100)}%`
+                }
+                labelLine={false}
+              >
+                {modeSplit.map((entry) => (
+                  <Cell key={entry.name} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip
+                formatter={(v: number) => [`${v} arrêts`, ""]}
+                contentStyle={{ fontSize: 11, borderRadius: 6 }}
+              />
+            </RechartsPieChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Donut volume par mode — seulement si deux modes présents */}
+        {hasTwoModes && (
+          <div className="bg-white rounded-md border border-gray-200 p-4">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-catl-text/70 uppercase tracking-wide mb-3">
+              <PieChart className="w-3.5 h-3.5" />
+              Volume par mode
+            </div>
+            <ResponsiveContainer width="100%" height={180}>
+              <RechartsPieChart>
+                <Pie
+                  data={volumeSplit}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={48}
+                  outerRadius={72}
+                  paddingAngle={3}
+                  dataKey="value"
+                  label={({ name, percent }) =>
+                    `${name} ${Math.round(percent * 100)}%`
+                  }
+                  labelLine={false}
+                >
+                  {volumeSplit.map((entry) => (
+                    <Cell key={entry.name} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(v: number) => [`${NUM.format(v)} u`, ""]}
+                  contentStyle={{ fontSize: 11, borderRadius: 6 }}
+                />
+              </RechartsPieChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {/* Barres coûts baseline vs optimisé */}
+        <div className="bg-white rounded-md border border-gray-200 p-4">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-catl-text/70 uppercase tracking-wide mb-3">
+            <BarChart2 className="w-3.5 h-3.5" />
+            Coûts (€)
+          </div>
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={costComparison} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+              <YAxis tick={{ fontSize: 10 }} width={48}
+                tickFormatter={(v) => `${Math.round(v)}€`} />
+              <Tooltip
+                formatter={(v: number) => [EUR.format(v), "Coût"]}
+                contentStyle={{ fontSize: 11, borderRadius: 6 }}
+              />
+              <Bar dataKey="coût" radius={[3, 3, 0, 0]}>
+                <Cell fill={COLOR_BASELINE} />
+                <Cell fill={COLOR_OPTIMIZED} />
+                <Cell fill={COLOR_SAVINGS} />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Barres empilées coût par producteur */}
+        {costByProducer.length > 0 && (
+          <div className={`bg-white rounded-md border border-gray-200 p-4 ${hasTwoModes ? "md:col-span-3" : "md:col-span-2"}`}>
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-catl-text/70 uppercase tracking-wide mb-3">
+              <BarChart2 className="w-3.5 h-3.5" />
+              Coût par producteur (€)
+            </div>
+            <ResponsiveContainer width="100%" height={160}>
+              <BarChart
+                data={costByProducer}
+                layout="vertical"
+                margin={{ top: 0, right: 16, left: 24, bottom: 0 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 10 }}
+                  tickFormatter={(v) => `${Math.round(v)}€`} />
+                <YAxis type="category" dataKey="id" tick={{ fontSize: 10, fontFamily: "monospace" }} width={64} />
+                <Tooltip
+                  formatter={(v: number, name: string) => [EUR.format(v), name]}
+                  contentStyle={{ fontSize: 11, borderRadius: 6 }}
+                />
+                <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
+                <Bar dataKey="Last-mile / Direct" stackId="a" fill={COLOR_DIRECT} radius={[0, 0, 0, 0]} />
+                <Bar dataKey="Détour hub" stackId="a" fill={COLOR_HUB} radius={[0, 3, 3, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </div>
-      <div
-        className={`mt-0.5 font-bold ${
-          emphasis ? "text-lg text-catl-accent" : "text-sm text-catl-primary"
-        }`}
-      >
-        {value}
-      </div>
-    </div>
+    </section>
   );
 }
 
