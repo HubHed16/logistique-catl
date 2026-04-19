@@ -237,6 +237,15 @@ public class DailyRoutingOptimizer {
             }
         }
 
+        // Un hub ne vaut la peine que si au moins 2 producteurs distincts y mutualisent.
+        // Sans cette contrainte, le solveur peut ouvrir un hub avec 1 seul producteur,
+        // ce qui n'apporte aucune mutualisation et ajoute juste un détour.
+        for (int j = 0; j < m; j++) {
+            MPConstraint minProd = solver.makeConstraint(0.0, Double.POSITIVE_INFINITY, "min_producers_" + j);
+            for (int p = 0; p < pCount; p++) minProd.setCoefficient(z[p][j], 1);
+            minProd.setCoefficient(y[j], -2);
+        }
+
         MPObjective obj = solver.objective();
         for (int i = 0; i < n; i++) {
             obj.setCoefficient(xDirect[i], directCost[i]);
