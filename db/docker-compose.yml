@@ -3,6 +3,8 @@ version: '3.8'
 networks:
   wms-net:
     driver: bridge
+  tour-net:
+    driver: bridge
 
 volumes:
   postgres-data:
@@ -13,7 +15,7 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: postgres
-    networks: [ wms-net ]
+    networks: [ wms-net, tour-net ]
     ports:
       - "5432:5432"
     environment:
@@ -33,7 +35,7 @@ services:
   sqlserver:
     build: ./mssql
     container_name: sqlserver
-    networks: [ wms-net ]
+    networks: [ wms-net, tour-net ]
     ports:
       - "1433:1433"
     environment:

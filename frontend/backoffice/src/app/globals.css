@@ -24,9 +24,14 @@ body {
   background: #ffffff;
   border-top: 6px solid var(--color-catl-primary);
   border-radius: 6px;
-  padding: 20px;
+  padding: 14px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
   transition: all 0.3s ease;
+}
+@media (min-width: 640px) {
+  .catl-card {
+    padding: 20px;
+  }
 }
 
 .catl-card--validated {
@@ -49,15 +54,21 @@ body {
   background: var(--color-catl-accent);
   color: #ffffff;
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   text-transform: uppercase;
   letter-spacing: 0.3px;
-  padding: 12px 40px;
+  padding: 10px 22px;
   border-radius: 9999px;
   border: none;
   cursor: pointer;
   box-shadow: 0 4px 10px rgba(230, 126, 34, 0.2);
   transition: opacity 0.2s ease;
+}
+@media (min-width: 640px) {
+  .catl-cta {
+    font-size: 0.95rem;
+    padding: 12px 40px;
+  }
 }
 
 .catl-cta:hover {

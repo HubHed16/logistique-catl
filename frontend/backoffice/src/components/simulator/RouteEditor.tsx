@@ -4,12 +4,17 @@ import {
   ArrowLeft,
   Calendar,
   CheckCircle2,
+  Coins,
   Copy,
+  Fuel,
   Lock,
   Pencil,
+  Receipt,
   Sparkles,
   Trash2,
   Truck,
+  Users,
+  Wrench,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -35,6 +40,7 @@ import { useSimulator } from "@/lib/simulator/state";
 import {
   DAY_LABELS,
   VEHICLE_TYPE_LABELS,
+  type RouteDetail,
   type Vehicle,
 } from "@/lib/simulator/types";
 
@@ -43,6 +49,14 @@ function formatDuration(min: number): string {
   const h = Math.floor(min / 60);
   const m = min % 60;
   return m === 0 ? `${h} h` : `${h} h ${String(m).padStart(2, "0")}`;
+}
+
+function formatEuro(n: number): string {
+  return n.toLocaleString("fr-BE", {
+    style: "currency",
+    currency: "EUR",
+    maximumFractionDigits: 2,
+  });
 }
 
 export function RouteEditor({ producerId }: { producerId: string }) {
@@ -310,7 +324,19 @@ export function RouteEditor({ producerId }: { producerId: string }) {
         </div>
       )}
 
-      <StopsList route={route} producerId={producerId} readOnly={isLocked} />
+      <RouteCostBreakdown
+        route={route}
+        vehicle={vehicle}
+        distanceKm={routing?.distanceKm ?? route.distanceKm ?? null}
+        durationMin={routing?.durationMin ?? route.durationMin ?? null}
+      />
+
+      <StopsList
+        route={route}
+        producerId={producerId}
+        vehicle={vehicle}
+        readOnly={isLocked}
+      />
 
       <ConfirmDialog
         open={pendingDelete}
@@ -370,6 +396,174 @@ export function RouteEditor({ producerId }: { producerId: string }) {
           }
         }}
       />
+    </section>
+  );
+}
+
+function RouteCostBreakdown({
+  route,
+  vehicle,
+  distanceKm,
+  durationMin,
+}: {
+  route: RouteDetail;
+  vehicle: Vehicle | null;
+  distanceKm: number | null;
+  durationMin: number | null;
+}) {
+  if (!vehicle) {
+    return (
+      <div className="catl-section catl-section--info">
+        <p className="text-xs italic text-catl-text">
+          Associe un véhicule au trajet pour obtenir le détail des coûts.
+        </p>
+      </div>
+    );
+  }
+
+  const stops = route.stops ?? [];
+  const totalStopDurationMin = stops.reduce(
+    (sum, s) => sum + (s.durationMin ?? 0),
+    0,
+  );
+  const drivingDurationMin = Math.max(
+    0,
+    (durationMin ?? 0) - totalStopDurationMin,
+  );
+  const totalDurationMin = Math.max(
+    durationMin ?? 0,
+    drivingDurationMin + totalStopDurationMin,
+  );
+
+  const hourlyCost = vehicle.hourlyCost ?? 0;
+  const rhCost = (totalDurationMin / 60) * hourlyCost;
+  const rhDrivingCost = (drivingDurationMin / 60) * hourlyCost;
+  const rhStopsCost = (totalStopDurationMin / 60) * hourlyCost;
+
+  const km = distanceKm ?? 0;
+  const fuelCost =
+    km * ((vehicle.consumptionL100Km ?? 0) / 100) * (vehicle.fuelPrice ?? 0);
+  const amortCost = km * (vehicle.amortizationEurKm ?? 0);
+
+  const computedTotal = rhCost + fuelCost + amortCost;
+  const totalRevenue = route.totalRevenue ?? 0;
+  const margin = totalRevenue - computedTotal;
+  const marginPositive = margin >= 0;
+
+  const parts = [
+    {
+      key: "rh",
+      label: "Coût RH",
+      amount: rhCost,
+      color: "#e67e22",
+      icon: <Users className="w-3.5 h-3.5" />,
+      detail:
+        rhDrivingCost > 0 && rhStopsCost > 0
+          ? `${formatDuration(drivingDurationMin)} route + ${formatDuration(totalStopDurationMin)} arrêts × ${hourlyCost.toFixed(2)} €/h`
+          : `${formatDuration(totalDurationMin)} × ${hourlyCost.toFixed(2)} €/h`,
+    },
+    {
+      key: "fuel",
+      label: "Carburant",
+      amount: fuelCost,
+      color: "#3498db",
+      icon: <Fuel className="w-3.5 h-3.5" />,
+      detail: `${km.toFixed(1)} km × ${(vehicle.consumptionL100Km ?? 0).toFixed(1)} L/100 × ${(vehicle.fuelPrice ?? 0).toFixed(2)} €/L`,
+    },
+    {
+      key: "amort",
+      label: "Amort. / entretien",
+      amount: amortCost,
+      color: "#8e44ad",
+      icon: <Wrench className="w-3.5 h-3.5" />,
+      detail: `${km.toFixed(1)} km × ${(vehicle.amortizationEurKm ?? 0).toFixed(2)} €/km`,
+    },
+  ];
+
+  return (
+    <section className="rounded-lg border-2 border-catl-primary/10 bg-gradient-to-br from-white to-catl-bg/50 p-4 shadow-sm">
+      <header className="flex items-center justify-between gap-3 flex-wrap mb-3">
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center justify-center w-8 h-8 rounded-md bg-catl-primary/10 text-catl-primary">
+            <Receipt className="w-4 h-4" />
+          </span>
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-catl-text">
+              Coût total estimé
+            </div>
+            <div className="text-2xl font-extrabold text-catl-primary leading-tight tabular-nums">
+              {formatEuro(computedTotal)}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          {totalRevenue > 0 && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-catl-accent/10 text-catl-primary">
+              <Coins className="w-3 h-3" />
+              CA {formatEuro(totalRevenue)}
+            </span>
+          )}
+          {totalRevenue > 0 && (
+            <span
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
+                marginPositive
+                  ? "bg-catl-success/10 text-catl-success"
+                  : "bg-catl-danger/10 text-catl-danger"
+              }`}
+            >
+              Marge {marginPositive ? "+" : ""}
+              {formatEuro(margin)}
+            </span>
+          )}
+        </div>
+      </header>
+
+      {/* Barre empilée des trois postes */}
+      {computedTotal > 0 && (
+        <div className="mb-3 h-2.5 w-full rounded-full bg-gray-100 overflow-hidden flex">
+          {parts.map((p) => (
+            <div
+              key={p.key}
+              style={{
+                flexGrow: p.amount,
+                background: p.color,
+              }}
+              className="h-full transition-[flex-grow] duration-200"
+              title={`${p.label} — ${formatEuro(p.amount)}`}
+            />
+          ))}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        {parts.map((p) => {
+          const pct =
+            computedTotal > 0 ? (p.amount / computedTotal) * 100 : 0;
+          return (
+            <div
+              key={p.key}
+              className="rounded-md border border-gray-100 bg-white px-3 py-2"
+            >
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-catl-text">
+                <span style={{ color: p.color }}>{p.icon}</span>
+                {p.label}
+                <span className="ml-auto tabular-nums text-catl-text/70">
+                  {pct.toFixed(0)}%
+                </span>
+              </div>
+              <div
+                className="mt-1 text-base font-bold tabular-nums"
+                style={{ color: p.color }}
+              >
+                {formatEuro(p.amount)}
+              </div>
+              <div className="text-[11px] text-catl-text/80 mt-0.5">
+                {p.detail}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </section>
   );
 }

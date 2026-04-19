@@ -8,7 +8,11 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ZoneTypeBadge } from "@/components/ui/ZoneTypeBadge";
 import { ApiError } from "@/lib/api";
-import { useDeleteZone, useZones } from "@/lib/hooks/zones";
+import {
+  DEFAULT_TEST_ZONE_ID,
+  useDeleteZone,
+  useZones,
+} from "@/lib/hooks/zones";
 import type { StorageZone } from "@/lib/types";
 
 export function ZoneList() {
@@ -66,59 +70,77 @@ export function ZoneList() {
             </tr>
           </thead>
           <tbody>
-            {zones.map((z) => (
-              <tr
-                key={z.id}
-                className="border-t border-gray-100 hover:bg-catl-bg/60 transition-colors"
-              >
-                <Td>
-                  <Link
-                    href={`/zones/${z.id}`}
-                    className="font-semibold text-catl-primary hover:text-catl-accent"
-                  >
-                    {z.name}
-                  </Link>
-                </Td>
-                <Td>
-                  <ZoneTypeBadge type={z.type} />
-                </Td>
-                <Td align="right" mono>
-                  {z.targetTemp != null ? z.targetTemp.toFixed(1) : "—"}
-                </Td>
-                <Td align="right" mono>
-                  {z.tempMin != null && z.tempMax != null
-                    ? `${z.tempMin.toFixed(1)} → ${z.tempMax.toFixed(1)}`
-                    : "—"}
-                </Td>
-                <Td align="right" mono>
-                  {z.locationsCount ?? 0}
-                </Td>
-                <Td align="right">
-                  <div className="inline-flex gap-1">
-                    <Link href={`/zones/${z.id}/edit`}>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        leftIcon={<Pencil className="w-3.5 h-3.5" />}
-                        aria-label={`Modifier ${z.name}`}
+            {zones.map((z) => {
+              const isDefaultTest = z.id === DEFAULT_TEST_ZONE_ID;
+              return (
+                <tr
+                  key={z.id}
+                  className="border-t border-gray-100 hover:bg-catl-bg/60 transition-colors"
+                >
+                  <Td>
+                    {isDefaultTest ? (
+                      <span className="font-semibold text-catl-primary inline-flex items-center gap-2">
+                        {z.name}
+                        <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-catl-accent/10 text-catl-accent">
+                          Par défaut
+                        </span>
+                      </span>
+                    ) : (
+                      <Link
+                        href={`/zones/${z.id}`}
+                        className="font-semibold text-catl-primary hover:text-catl-accent"
                       >
-                        Éditer
-                      </Button>
-                    </Link>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setPendingDelete(z)}
-                      className="text-catl-danger hover:bg-red-50"
-                      leftIcon={<Trash2 className="w-3.5 h-3.5" />}
-                      aria-label={`Supprimer ${z.name}`}
-                    >
-                      Suppr.
-                    </Button>
-                  </div>
-                </Td>
-              </tr>
-            ))}
+                        {z.name}
+                      </Link>
+                    )}
+                  </Td>
+                  <Td>
+                    <ZoneTypeBadge type={z.type} />
+                  </Td>
+                  <Td align="right" mono>
+                    {z.targetTemp != null ? z.targetTemp.toFixed(1) : "—"}
+                  </Td>
+                  <Td align="right" mono>
+                    {z.tempMin != null && z.tempMax != null
+                      ? `${z.tempMin.toFixed(1)} → ${z.tempMax.toFixed(1)}`
+                      : "—"}
+                  </Td>
+                  <Td align="right" mono>
+                    {z.locationsCount ?? 0}
+                  </Td>
+                  <Td align="right">
+                    {isDefaultTest ? (
+                      <span className="text-xs italic text-catl-text/60">
+                        —
+                      </span>
+                    ) : (
+                      <div className="inline-flex gap-1">
+                        <Link href={`/zones/${z.id}/edit`}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            leftIcon={<Pencil className="w-3.5 h-3.5" />}
+                            aria-label={`Modifier ${z.name}`}
+                          >
+                            Éditer
+                          </Button>
+                        </Link>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setPendingDelete(z)}
+                          className="text-catl-danger hover:bg-red-50"
+                          leftIcon={<Trash2 className="w-3.5 h-3.5" />}
+                          aria-label={`Supprimer ${z.name}`}
+                        >
+                          Suppr.
+                        </Button>
+                      </div>
+                    )}
+                  </Td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

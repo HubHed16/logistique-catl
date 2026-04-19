@@ -16,6 +16,20 @@ const zoneKey = (id: string) => ["zones", id] as const;
 const zoneLocationsKey = (zoneId: string) =>
   ["zones", zoneId, "locations"] as const;
 
+// Zone de test figée côté front — le back ne supporte pas la création, donc on
+// injecte une zone « par défaut » dans la liste pour que l'UI ait toujours
+// quelque chose à afficher. L'ID reste stable pour ne pas casser les refs.
+export const DEFAULT_TEST_ZONE_ID = "00000000-0000-0000-0000-00000000test";
+const DEFAULT_TEST_ZONE: StorageZone = {
+  id: DEFAULT_TEST_ZONE_ID,
+  name: "Zone de test par défaut",
+  type: "COLD",
+  targetTemp: 4,
+  tempMin: 0,
+  tempMax: 7,
+  locationsCount: 0,
+};
+
 // Page unique de 500 suffit pour le volume hackathon. Si on explose la taille,
 // on repassera en pagination côté back.
 async function fetchAllLocations(): Promise<StorageLocation[]> {
@@ -52,9 +66,10 @@ export function useZones() {
       for (const l of locations) {
         countByZone.set(l.zoneId, (countByZone.get(l.zoneId) ?? 0) + 1);
       }
-      return (zonesRaw ?? []).map((z) =>
+      const zones = (zonesRaw ?? []).map((z) =>
         normalizeStorageZone(z, countByZone.get(z.id) ?? 0),
       );
+      return [DEFAULT_TEST_ZONE, ...zones];
     },
   });
 }

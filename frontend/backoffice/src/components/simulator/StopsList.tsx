@@ -19,6 +19,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   AlertTriangle,
+  Clock,
   GripVertical,
   Package,
   Pencil,
@@ -40,15 +41,33 @@ import {
   STOP_OPERATION_LABELS,
   type ApiStop,
   type RouteDetail,
+  type Vehicle,
 } from "@/lib/simulator/types";
 
 type Props = {
   route: RouteDetail;
   producerId: string;
+  vehicle?: Vehicle | null;
   readOnly?: boolean;
 };
 
-export function StopsList({ route, producerId, readOnly }: Props) {
+function formatEuro(n: number): string {
+  return n.toLocaleString("fr-BE", {
+    style: "currency",
+    currency: "EUR",
+    maximumFractionDigits: 2,
+  });
+}
+
+function stopRhCost(
+  durationMin: number | null | undefined,
+  hourlyCost: number | null | undefined,
+): number | null {
+  if (!durationMin || !hourlyCost) return null;
+  return (durationMin / 60) * hourlyCost;
+}
+
+export function StopsList({ route, producerId, vehicle, readOnly }: Props) {
   const { state, dispatch } = useSimulator();
   const deleteStop = useDeleteStop(route.id, producerId);
   const reorderStops = useReorderStops(route.id, producerId);
@@ -188,6 +207,7 @@ export function StopsList({ route, producerId, readOnly }: Props) {
                   <SortableStopRow
                     key={stop.id}
                     stop={stop}
+                    hourlyCost={vehicle?.hourlyCost ?? null}
                     readOnly={!!readOnly}
                     onEdit={() => {
                       setEditingId(stop.id);
@@ -240,11 +260,13 @@ export function StopsList({ route, producerId, readOnly }: Props) {
 
 function SortableStopRow({
   stop,
+  hourlyCost,
   readOnly,
   onEdit,
   onDelete,
 }: {
   stop: ApiStop;
+  hourlyCost: number | null;
   readOnly: boolean;
   onEdit: () => void;
   onDelete: () => void;
@@ -259,6 +281,7 @@ function SortableStopRow({
   };
 
   const hasCoords = stop.latitude != null && stop.longitude != null;
+  const rhCost = stopRhCost(stop.durationMin, hourlyCost);
 
   return (
     <li
@@ -299,11 +322,23 @@ function SortableStopRow({
               </span>
             )}
           </div>
-          <div className="text-xs text-catl-text flex flex-wrap gap-x-3 mt-1">
-            <span>{(stop.amountEur ?? 0).toFixed(2)} €</span>
-            <span>{stop.durationMin ?? 0} min</span>
+          <div className="text-xs text-catl-text flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
+            <span>{(stop.amountEur ?? 0).toFixed(2)} € CA</span>
+            <span className="inline-flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              {stop.durationMin ?? 0} min
+            </span>
             {stop.distanceFromPrevKm != null && (
               <span>+{stop.distanceFromPrevKm.toFixed(1)} km</span>
+            )}
+            {rhCost != null && (
+              <span
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-catl-accent/15 to-catl-accent/5 border border-catl-accent/30 text-catl-primary font-semibold text-xs shadow-sm"
+                title={`Coût RH = ${stop.durationMin ?? 0} min × ${hourlyCost?.toFixed(2)} €/h`}
+              >
+                <span className="text-catl-accent">RH</span>
+                <span className="tabular-nums">{formatEuro(rhCost)}</span>
+              </span>
             )}
           </div>
         </div>

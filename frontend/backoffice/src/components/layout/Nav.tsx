@@ -16,7 +16,7 @@ const items: NavItem[] = [
   { href: "/reception", label: "Réception", icon: Inbox },
   { href: "/zones", label: "Zones", icon: Layers },
   { href: "/products", label: "Produits", icon: ShoppingBasket },
-  { href: "/stock-items", label: "Stock", icon: Package },
+  // { href: "/stock-items", label: "Stock", icon: Package },
   { href: "/producers", label: "Producteurs", icon: Users },
   { href: "/simulator", label: "Simulateur", icon: Route },
   { href: "/optimization", label: "Optimisation", icon: Sparkles },
@@ -25,8 +25,8 @@ const items: NavItem[] = [
 export function Nav() {
   const pathname = usePathname();
   return (
-    <nav className="bg-white border-b border-gray-200 shadow-sm">
-      <ul className="max-w-6xl mx-auto px-6 flex gap-1">
+    <nav className="bg-white border-b border-gray-200 shadow-sm overflow-x-auto">
+      <ul className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-nowrap gap-1 min-w-max">
         {items.map(({ href, label, icon: Icon }) => {
           const active =
             href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -34,7 +34,7 @@ export function Nav() {
             <li key={href}>
               <Link
                 href={href}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold uppercase tracking-wide transition-colors border-b-2 ${
+                className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold uppercase tracking-wide whitespace-nowrap transition-colors border-b-2 ${
                   active
                     ? "border-catl-accent text-catl-accent"
                     : "border-transparent text-catl-text hover:text-catl-primary"

@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { MapPin, Package } from "lucide-react";
+import { CheckCircle2, MapPin, Package } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
@@ -76,7 +76,9 @@ export function StopForm({
           ? "customer"
           : "address",
       customerId: stop?.customerId ?? "",
-      address: stop?.address ?? "",
+      address: hasInitialCoords
+        ? `Point carte ${initialCoords!.lat.toFixed(5)}, ${initialCoords!.lng.toFixed(5)}`
+        : stop?.address ?? "",
       latitude: hasInitialCoords ? initialCoords!.lat : stop?.latitude ?? undefined,
       longitude: hasInitialCoords ? initialCoords!.lng : stop?.longitude ?? undefined,
       operation: stop?.operation ?? "delivery",
@@ -94,6 +96,15 @@ export function StopForm({
     clearErrors,
     formState: { errors, isSubmitting },
   } = form;
+
+  // Quand on arrive avec un clic-sur-carte, on valide immédiatement : les
+  // coordonnées sont déjà posées via `defaultValues`, la validation confirme
+  // visuellement à l'utilisateur que le point est accepté.
+  useEffect(() => {
+    if (hasInitialCoords) {
+      void trigger(["address", "latitude", "longitude"]);
+    }
+  }, [hasInitialCoords, trigger]);
 
   // Le montant de l'arrêt est dérivé des lignes produits : somme des
   // quantité × prix unitaire. Les lignes sans prix comptent pour 0.
@@ -263,11 +274,12 @@ export function StopForm({
                 : "Sélectionne une suggestion pour récupérer les coordonnées."
             }
           >
-            {hasInitialCoords && (
-              <div className="mb-2 inline-flex items-center gap-1.5 text-xs text-catl-primary bg-catl-accent/10 border border-catl-accent/30 rounded-md px-2 py-1">
-                <MapPin className="w-3 h-3" />
-                <span className="font-mono">
-                  Point carte : {initialCoords!.lat.toFixed(5)},{" "}
+            {hasInitialCoords && !errors.address && (
+              <div className="mb-2 inline-flex items-center gap-1.5 text-xs font-semibold text-catl-success bg-catl-success/10 border border-catl-success/30 rounded-md px-2 py-1">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Coordonnées validées —</span>
+                <span className="font-mono text-catl-primary">
+                  {initialCoords!.lat.toFixed(5)},{" "}
                   {initialCoords!.lng.toFixed(5)}
                 </span>
               </div>

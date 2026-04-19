@@ -121,11 +121,11 @@ export function ProducerSelector() {
       : "hover:bg-catl-bg border-l-2 border-transparent";
 
   return (
-    <div className="relative" ref={rootRef}>
+    <div className="relative w-full md:w-auto" ref={rootRef}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full md:w-auto min-w-[260px] flex items-center justify-between gap-2 px-4 py-2 rounded-full bg-white border border-catl-primary/20 hover:border-catl-accent text-sm shadow-sm transition-colors"
+        className="w-full md:w-auto md:min-w-[260px] flex items-center justify-between gap-2 px-4 py-2 rounded-full bg-white border border-catl-primary/20 hover:border-catl-accent text-sm shadow-sm transition-colors"
         aria-haspopup="listbox"
         aria-expanded={open}
       >
@@ -147,7 +147,7 @@ export function ProducerSelector() {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-[min(440px,92vw)] bg-white rounded-md shadow-xl border border-catl-primary/10 z-50 flex flex-col overflow-hidden">
+        <div className="absolute inset-x-0 md:inset-x-auto md:right-0 mt-2 w-full md:w-[min(440px,92vw)] bg-white rounded-md shadow-xl border border-catl-primary/10 z-50 flex flex-col overflow-hidden">
           {mode === "list" && (
             <>
               <div className="relative p-2 border-b border-gray-100 bg-catl-bg/60">

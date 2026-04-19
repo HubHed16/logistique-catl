@@ -38,9 +38,9 @@ export function ProducerCatalog({ producerId }: Props) {
 
   const zoneCounts = useMemo(() => {
     const counts: Record<StorageZoneType, number> = {
-      ambient: 0,
-      fresh: 0,
-      negative: 0,
+      DRY: 0,
+      COLD: 0,
+      FROZEN: 0,
     };
     for (const p of products) {
       if (p.storageType) counts[p.storageType] += 1;
