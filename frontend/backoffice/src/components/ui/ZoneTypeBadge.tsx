@@ -25,9 +25,9 @@ export function ZoneTypeBadge({ type }: { type: StorageZoneType }) {
   const s = STYLES[type];
   return (
     <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${s.bg} ${s.text}`}
+      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold`}
     >
-      {s.label}
+      {s?.label}
     </span>
   );
 }
