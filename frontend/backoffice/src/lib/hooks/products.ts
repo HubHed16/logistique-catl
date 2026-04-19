@@ -5,7 +5,7 @@ import {
   normalizeProducer,
   normalizeProduct,
 } from "@/lib/api-normalizers";
-import type { Producer, Product } from "@/lib/types";
+import type { Producer, Product, StorageZoneType } from "@/lib/types";
 import type { ProductCreateValues } from "@/lib/schemas";
 
 const PRODUCERS_KEY = ["producers"] as const;
@@ -34,7 +34,7 @@ export function useProducers() {
 
 // Le back n'expose pas /by-ean. On fetche une page unique (500) et on filtre
 // client-side — adéquat pour un catalogue hackathon.
-function useAllProducts() {
+export function useAllProducts() {
   return useQuery({
     queryKey: ALL_PRODUCTS_KEY,
     queryFn: async () => {
@@ -96,6 +96,44 @@ export function useCreateProduct() {
       if (err instanceof ApiError) {
         // No-op — le composant affiche déjà le message.
       }
+    },
+  });
+}
+
+export type ProductUpdateValues = {
+  name: string;
+  category: string | null;
+  ean: string | null;
+  unit: string;
+  storageType: StorageZoneType | null;
+  isBio: boolean;
+  certification: string | null;
+  producerId: string;
+};
+
+export function useUpdateProduct() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, values }: { id: string; values: ProductUpdateValues }) => {
+      const body = denormalizeProduct(values);
+      const raw = await api.put<Parameters<typeof normalizeProduct>[0]>(
+        `/api/wms/products/${id}`,
+        body,
+      );
+      return normalizeProduct(raw);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ALL_PRODUCTS_KEY });
+    },
+  });
+}
+
+export function useDeleteProduct() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete<void>(`/api/wms/products/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ALL_PRODUCTS_KEY });
     },
   });
 }

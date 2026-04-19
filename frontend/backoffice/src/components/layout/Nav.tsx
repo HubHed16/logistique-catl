@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Inbox, Layers, Route, Sparkles, Users } from "lucide-react";
+import { Home, Inbox, Layers, Package, Route, ShoppingBasket, Sparkles, Users } from "lucide-react";
 import type { ComponentType } from "react";
 
 type NavItem = {
@@ -13,8 +13,10 @@ type NavItem = {
 
 const items: NavItem[] = [
   { href: "/", label: "Accueil", icon: Home },
-  // { href: "/reception", label: "Réception", icon: Inbox },
-  // { href: "/zones", label: "Zones", icon: Layers },
+  { href: "/reception", label: "Réception", icon: Inbox },
+  { href: "/zones", label: "Zones", icon: Layers },
+  { href: "/products", label: "Produits", icon: ShoppingBasket },
+  { href: "/stock-items", label: "Stock", icon: Package },
   { href: "/producers", label: "Producteurs", icon: Users },
   { href: "/simulator", label: "Simulateur", icon: Route },
   { href: "/optimization", label: "Optimisation", icon: Sparkles },

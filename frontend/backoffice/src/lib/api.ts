@@ -79,6 +79,18 @@ export const api = {
       body: body === undefined ? undefined : JSON.stringify(body),
     }).then((r) => handle<T>(r));
   },
+  put<T>(path: string, body?: unknown): Promise<T> {
+    const url = buildUrl(path);
+    return performFetch(url, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        ...actorHeader(),
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    }).then((r) => handle<T>(r));
+  },
   patch<T>(path: string, body?: unknown): Promise<T> {
     const url = buildUrl(path);
     return performFetch(url, {
